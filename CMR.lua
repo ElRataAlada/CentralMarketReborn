@@ -1,5 +1,5 @@
-script_name('CMR')
-script_version('1.0.0')
+script_name('Central Market Reborn')
+script_version('1.0.1')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -200,8 +200,16 @@ function sampev.onServerMessage(color, text)
     if removeSell and text:find("У вас есть 3 минуты, чтобы настроить товар, иначе аренда ларька будет отменена.") then
        removeSell = false
     end
-
-    if (removeSell or sellProc or buyProc) and text:find("[Ошибка]") then
+    
+    if removeSell and text:find("[Ошибка]") then
+        return false
+    end
+    
+    if sellProc and text:find("[Ошибка]") then
+        return false
+    end
+    
+    if sellProc and text:find("Выставлено") then
         return false
     end
 
@@ -308,7 +316,7 @@ local td_left = {
 function sellProcess()
 
     if sellProc then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Выставляю товары на продажу! Подождите', settings.main.colormsg, 0x000000, 0)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Выставляю товары на продажу! Подождите', settings.main.colormsg)
         
         inventoryPages = {2075, 2076, 2077, 2078, 2079}
         sampCloseCurrentDialogWithButton(0)
@@ -544,6 +552,7 @@ end)
     if id == 3050 and check then -- тут мы парсим список товаров на скуп
         lua_thread.create(parserPage, text, title)
     end
+
     if id == 25493 and check then -- тут мы парсим список товаров на продажу
         lua_thread.create(parseInventoryItems, text, title)
     end
@@ -553,29 +562,35 @@ end)
         if check then
             if checkmode == 1 then
                 sampSendDialogResponse(id, 1, 1)
-            -- else
-                -- sampSendDialogResponse(id, 1, 0)
             end
         end
 
         if delprod then
             sampSendDialogResponse(id, 1, 3)
-        elseif buyProc then
-                lua_thread.create(function()
+        end
+
+        if buyProc then
+            lua_thread.create(function()
                 wait(parserBuf.v)
                 sampSendDialogResponse(id, 1, 2)
-                end)
-        elseif sellProc then
-                sampSendDialogResponse(id, 1, 0)
-                lua_thread.create(sellProcess)
-        elseif removeSell then
-                sampSendDialogResponse(id, 1, 0)
-                lua_thread.create(removeSellProcess)
+            end)
         end
+
+        if sellProc then
+            sampSendDialogResponse(id, 1, 0)
+            lua_thread.create(sellProcess)
+        end
+
+        if removeSell then
+            sampSendDialogResponse(id, 1, 0)
+            lua_thread.create(removeSellProcess)
+        end
+
         text = text .. '\n \n{'.. settings.main.color .. "}7. Central Market Reborn - Menu"
         last_list = select(2, string.gsub(text, "\n", "\n")) -- get lines count
         return {id, style, title, button1, button2, text}
     end
+
     if id == 3050 and delprod then
         local i = 0
         for n in text:gmatch('[^\r\n]+') do
@@ -596,13 +611,15 @@ end)
             end
             i = i + 1
         end
-end
+    end
+    
     if title:find('Поиск товара') and text:find('Введите наименование товара') and buyProc then
         lua_thread.create(function()
             wait(parserBuf.v)
             sampSendDialogResponse(id, 1, 1, myitemsBuy[idt][1])
         end)
     end
+    
     if title:find('Поиск товара') and not text:find('Введите наименование товара') and buyProc then
         lua_thread.create(function()
             local ditem = 0
@@ -615,6 +632,7 @@ end
             end
         end)
     end
+
     if id == 3050 and buyProc then
         lua_thread.create(function()
             local skip, isFound, i = true, false, 0
@@ -628,34 +646,41 @@ end
             end
         end)
     end
-    if id == 26555 and buyProc then
-            if text:find('Введите%sцену%sза%sтовар%s%(%s') then
-                sampSendDialogResponse(26555, 1, 0, myitemsBuy[idt][3]) else sampSendDialogResponse(26555, 1, 0, myitemsBuy[idt][2]..", "..myitemsBuy[idt][3])
-            end
-            if tonumber(idt) == tonumber(#myitemsBuy) then
-            local isEndBuy = true
-            sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
-            else
-                idt = idt + 1
-            end
 
-    elseif id == 3060 and buyProc then
-        if text:find('Введите%sцену%sза%sтовар%s%(%s') then
-            sampSendDialogResponse(3060, 1, 0, myitemsBuy[idt][3]) else sampSendDialogResponse(3060, 1, 0, myitemsBuy[idt][2]..", "..myitemsBuy[idt][3]) 
+    if buyProc then
+        if text:find('Введите цену за товар') then
+            lua_thread.create(function()
+                wait(parserBuf.v)
+                sampSendDialogResponse(id, 1, 0, myitemsBuy[idt][3])
+                
+                if tonumber(idt) == tonumber(#myitemsBuy) then
+                    local isEndBuy = true
+                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
+                else
+                    idt = idt + 1
+                end
+            end)
+        elseif text:find('Введите количество и цену за один товар') then
+            lua_thread.create(function()
+                wait(parserBuf.v)
+                sampSendDialogResponse(id, 1, 0, myitemsBuy[idt][2]..", "..myitemsBuy[idt][3]) 
+           
+                if tonumber(idt) == tonumber(#myitemsBuy) then
+                    local isEndBuy = true
+                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
+                else
+                    idt = idt + 1
+                end
+            end)
         end
-        if tonumber(idt) == tonumber(#myitemsBuy) then
-            local isEndBuy = true
-            sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
-            else
-                idt = idt + 1
-            end
-        end
+    end
+
+
 end
 
 function samp_create_sync_data(sync_type, copy_from_player)
     local ffi = require 'ffi'
     local sampfuncs = require 'sampfuncs'
-    -- from SAMP.Lua
     local raknet = require 'samp.raknet'
     require 'samp.synchronization'
 
@@ -1047,10 +1072,9 @@ function imgui.OnDrawFrame()
                 end
                 imgui.SameLine()
                 if imgui.Button(u8'Снять Скупку', imgui.ImVec2(250, 40)) then
-                   
-
                     delprod, delprodc = not delprod, 4
-                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Нажмите на кнопку {'..settings.main.color..'}«Прекратить покупку товара»' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg)
+                    press_alt()
+                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Cнятия с скупки. Подождите' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg)
                 end
             else    
                 imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже! \nЗатем нажмите в лавке 'Выставить товар на покупку'!")
@@ -1389,12 +1413,12 @@ function imgui.OnDrawFrame()
                         local bcount = imgui.ImInt(myitemsBuy[i][2])
                         local bprice = imgui.ImInt(myitemsBuy[i][3])
                         
-                        imgui.Text(u8('Цена.   '))
-                        imgui.SameLine()
-                        imgui.InputInt(('##price' .. i), bprice)
                         imgui.Text(u8('Кол-во.'))
                         imgui.SameLine()
                         imgui.InputInt(('##count' .. i), bcount)
+                        imgui.Text(u8('Цена.   '))
+                        imgui.SameLine()
+                        imgui.InputInt(('##price' .. i), bprice)
 
                         
                         if myitemsBuy[i][2] ~= bcount.v then
@@ -1480,7 +1504,7 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.BeginGroup(imgui.SameLine())
                     if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then secondaryWindowState = false mainWindowState = true end
-                    if imgui.Button(u8"Начать закупку", imgui.ImVec2(240, 75)) then 
+                    if imgui.Button(u8"Начать скупку", imgui.ImVec2(240, 75)) then 
                         idt = 1
                         buyProc, isEndBuy = not buyProc, false
 
@@ -1489,7 +1513,6 @@ function imgui.OnDrawFrame()
                         for i=1, #inputs do itemsBuy[inputs[i][3]][2] = inputs[i][1].v itemsBuy[inputs[i][3]][3] = inputs[i][2].v itemsBuy[inputs[i][3]][5] = inputs[i][5].v inicfg.save(itemsBuy, 'Central Market\\ARZCentral.ini') end 
                     end
                     if imgui.Button(u8"Снять скупку", imgui.ImVec2(240, 75)) then 
-                        
                         delprod, delprodc = not delprod, 4
                         press_alt()
                         sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Нажмите на кнопку {'..settings.main.color..'}«Прекратить покупку товара»' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg) end
@@ -1671,7 +1694,6 @@ function imgui.OnDrawFrame()
                     
                     imgui.Dummy(imgui.ImVec2(0,5))
                     if imgui.Button(u8"Начать продажу", imgui.ImVec2(240, 75)) then 
-                       
                         idt = 1
                         sellProc = true
                         press_alt()
