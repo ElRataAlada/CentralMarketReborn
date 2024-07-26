@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.1.4')
+script_version('1.1.5')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -175,6 +175,75 @@ function create_preset_buy(name)
     load_preset_buy()
 end
 
+function load_avg_prices_wiki()
+
+    lua_thread.create(function()
+
+        local s = require("requests")
+    
+        local page = 1
+        local r = ""
+        local items = {}
+    
+        while true do
+            wait(1000)
+    
+            if page == 1 then
+                r = s.get("https://arz-wiki.com/arz-rp/items/")
+            else
+                r = s.get("https://arz-wiki.com/arz-rp/items/page/"..page.."/")
+            end
+    
+            sampAddChatMessage(page, -1)
+
+            page = page + 1
+    
+            if r.status_code ~= 200 then
+                break
+            end
+    
+            local html = r.text
+            
+            local file = io.open(getWorkingDirectory()..'\\config\\prices.html', 'w')
+            file:write(html)
+            file:close()
+
+            local start = 0
+            local finish = 0
+    
+            while true do
+                wait(1000)
+                
+                -- <a class="card card--item  " href="https://arz-wiki.com/arz-rp/items/musornyj-paket/" title="Мусорный пакет">
+                
+                start = html:find('<a class="card', finish)
+                finish = html:find('" title=', start)
+
+                if start == nil or finish == nil then
+                    break
+                end
+
+                local link = html:
+
+
+
+
+
+
+
+
+
+
+                print('[ Central Market Reborn ]: {FFFFFF}Загружаю данные о предмете: '..name, settings.main.colormsg)
+                print('[ Central Market Reborn ]: {FFFFFF}Ссылка: '..link, settings.main.colormsg)
+    
+            end
+        end
+
+    end)
+end
+
+
 function main()
     while not isSampAvailable() do
         wait(100)
@@ -183,7 +252,7 @@ function main()
 	samp = getModuleHandle('samp.dll')
 	if samp <= 0x0 then return end
 
-    autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '['..string.upper(thisScript().name)..']: ', "https://github.com/ElRataAlada/CentralMarketReborn")
+    autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
 
     if not doesFileExist(json_file_BuyList) then jsonSave(json_file_BuyList, {}) end
     if not doesFileExist(json_file_mySellList) then jsonSave(json_file_mySellList, {}) end
@@ -191,6 +260,7 @@ function main()
 
     if doesFileExist('moonloader/config/Central Market/ARZCentral-settings.ini') then inicfg.save(settings, 'Central Market\\ARZCentral-settings') end
 
+    -- load_avg_prices_wiki()
 
     itemsBuy = jsonRead(json_file_BuyList)
     myItemsSell = jsonRead(json_file_mySellList)
@@ -704,6 +774,13 @@ end)
         if text:find('Введите цену за товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
+                
+                if presets.buy[buyPresetIndex.v + 1].items[idt][2] == 0 then
+                    sampCloseCurrentDialogWithButton(0)
+                    idt = idt + 1
+                    return
+                end
+
                 sampSendDialogResponse(id, 1, 0, presets.buy[buyPresetIndex.v + 1].items[idt][3])
                 
                 if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
@@ -717,6 +794,13 @@ end)
         elseif text:find('Введите количество и цену за один товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
+
+                if presets.buy[buyPresetIndex.v + 1].items[idt][2] == 0 then
+                    sampCloseCurrentDialogWithButton(0)
+                    idt = idt + 1
+                    return
+                end
+
                 sampSendDialogResponse(id, 1, 0, presets.buy[buyPresetIndex.v + 1].items[idt][2]..", "..presets.buy[buyPresetIndex.v + 1].items[idt][3]) 
                 
                 if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
