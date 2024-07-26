@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.1.0')
+script_version('1.1.1')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -90,25 +90,17 @@ function autoupdate(json_url, prefix, url)
             f:close()
             os.remove(json)
             
-            local is_bigger = true
+            local current = thisScript().version
+            local current_t = {}
+            local update_t = {}
 
-            if updateversion ~= nil then
-              local current = thisScript().version
-              local current_t = {}
-              local update_t = {}
+            for num in current:gmatch("%d+") do table.insert(current_t, num) end
+            for num in updateversion:gmatch("%d+") do table.insert(update_t, num) end
 
-              for num in current:gmatch("%d+") do table.insert(current_t, num) end
-              for num in updateversion:gmatch("%d+") do table.insert(update_t, num) end
-  
-              for i = 1, math.min(#current_t, #update_t) do
-                if tonumber(update_t[i]) < tonumber(current_t[i]) then
-                  is_bigger = false
-                  break
-                else
-              end
-            end
+            local current = tonumber(table.concat(current_t))
+            local update = tonumber(table.concat(update_t))
 
-            if is_bigger then
+            if current < update then
               lua_thread.create(function(prefix)
                 local dlstatus = require('moonloader').download_status
                 local color = -1
@@ -144,9 +136,9 @@ function autoupdate(json_url, prefix, url)
           update = false
         end
       end
-    end
     end)
-  while update ~= false do wait(100) end
+
+    while update ~= false do wait(100) end
 end
 
 function parseAvgPrices()
