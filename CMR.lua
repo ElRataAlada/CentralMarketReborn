@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.1.2')
+script_version('1.1.3')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -15,12 +15,16 @@ u8 = encoding.UTF8
 
 local json_file_BuyList = getWorkingDirectory()..'\\config\\Central Market\\buyitems.json'
 local json_file_mySellList = getWorkingDirectory()..'\\config\\Central Market\\sellitems.json'
-local json_file_myBuyList = getWorkingDirectory()..'\\config\\Central Market\\mybuyitems.json'
+local json_file_presets = getWorkingDirectory()..'\\config\\Central Market\\presets.json'
 local avg_prices = nil
 
-local itemsBuy, myitemsBuy, itemsSell, myItemsSell, itemsSellPosition = {}, {}, {}, {}, {}
+local itemsBuy, itemsSell, myItemsSell, itemsSellPosition = {}, {}, {}, {}
 
 local removeSell = false
+
+local buyPresetIndex = imgui.ImInt(0)
+local byPresetNames = { }
+local buyPresetNameInput = imgui.ImBuffer(124)
 
 local settings = inicfg.load({
     main = {
@@ -60,7 +64,7 @@ STATES = {
 function setState(STATE)
     if STATE == STATES.mainWindowState then  buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false mainWindowState = true end
     if STATE == STATES.buyWindowState then  mainWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false buyWindowState = true end
-    if STATE == STATES.sellWindowState then  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false sellWindowState = true end
+    if STATE == STATES.sellWindowState then itemsSell = {}  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false sellWindowState = true end
     if STATE == STATES.sellWindow2State then  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindowState = false sellWindow2State = true end
     if STATE == STATES.infoWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false  sellWindow2State = false infoWindowState = true end
     if STATE == STATES.settingWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false settingWindowState = true end
@@ -70,61 +74,73 @@ function setState(STATE)
     if STATE == STATES.delprod then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false infoWindowState = false  sellWindow2State = false delprod = true end
 end
 
+
 function autoupdate(json_url, prefix, url)
-  local dlstatus = require('moonloader').download_status
-  local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
-  if doesFileExist(json) then os.remove(json) end
-  downloadUrlToFile(json_url, json,
-    function(id, status, p1, p2)
-      if status == dlstatus.STATUSEX_ENDDOWNLOAD then
-        if doesFileExist(json) then
-          local f = io.open(json, 'r')
-          if f then
-            local info = decodeJson(f:read('*a'))
-            updatelink = info.updateurl
-            updateversion = info.latest
-            f:close()
-            os.remove(json)
-            if updateversion ~= thisScript().version then
-              lua_thread.create(function(prefix)
-                local dlstatus = require('moonloader').download_status
-                local color = -1
-                sampAddChatMessage((prefix..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), color)
-                wait(250)
-                downloadUrlToFile(updatelink, thisScript().path,
-                  function(id3, status1, p13, p23)
-                    if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
-                      print(string.format('Загружено %d из %d.', p13, p23))
-                    elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                      print('Загрузка обновления завершена.')
-                      sampAddChatMessage((prefix..'Обновление завершено!'), color)
-                      goupdatestatus = true
-                      lua_thread.create(function() wait(500) thisScript():reload() end)
-                    end
-                    if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
-                      if goupdatestatus == nil then
-                        sampAddChatMessage((prefix..'Обновление прошло неудачно. Запускаю устаревшую версию..'), color)
-                        update = false
+    local dlstatus = require('moonloader').download_status
+    local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
+    if doesFileExist(json) then os.remove(json) end
+    downloadUrlToFile(json_url, json,
+      function(id, status, p1, p2)
+        if status == dlstatus.STATUSEX_ENDDOWNLOAD then
+          if doesFileExist(json) then
+            local f = io.open(json, 'r')
+            if f then
+              local info = decodeJson(f:read('*a'))
+              updatelink = info.updateurl
+              updateversion = info.latest
+              f:close()
+              os.remove(json)
+
+                local current = thisScript().version
+                local current_t = {}
+                local update_t = {}
+
+                for num in current:gmatch("%d+") do table.insert(current_t, num) end
+                for num in updateversion:gmatch("%d+") do table.insert(update_t, num) end
+
+                local current_v = tonumber(table.concat(current_t))
+                local update_v = tonumber(table.concat(update_t))
+
+              if current_v < update_v then
+                lua_thread.create(function(prefix)
+                  local dlstatus = require('moonloader').download_status
+                  local color = -1
+                  sampAddChatMessage((prefix..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), settings.main.colormsg)
+                  wait(250)
+                  downloadUrlToFile(updatelink, thisScript().path,
+                    function(id3, status1, p13, p23)
+                      if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
+                        print(string.format('Загружено %d из %d.', p13, p23))
+                      elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
+                        print('Загрузка обновления завершена.')
+                        sampAddChatMessage((prefix..'Обновление завершено!'), settings.main.colormsg)
+                        goupdatestatus = true
+                        lua_thread.create(function() wait(500) thisScript():reload() end)
+                      end
+                      if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
+                        if goupdatestatus == nil then
+                          sampAddChatMessage((prefix..'Обновление прошло неудачно. Запускаю устаревшую версию..'), settings.main.colormsg)
+                          update = false
+                        end
                       end
                     end
-                  end
+                  )
+                  end, prefix
                 )
-                end, prefix
-              )
-            else
-              update = false
-              print('v'..thisScript().version..': Обновление не требуется.')
+              else
+                update = false
+                print('v'..thisScript().version..': Обновление не требуется.')
+              end
             end
+          else
+            print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
+            update = false
           end
-        else
-          print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
-          update = false
         end
       end
-    end
-  )
-  while update ~= false do wait(100) end
-end
+    )
+    while update ~= false do wait(100) end
+  end
 
 function parseAvgPrices()
     avg_prices = jsonRead(getWorkingDirectory()..'\\config\\prices.json')
@@ -143,6 +159,22 @@ function parseAvgPrices()
     end
 end
 
+function load_preset_buy()
+    presets.buy[buyPresetIndex.v + 1].items = presets.buy[buyPresetIndex.v + 1].items
+end
+
+function create_preset_buy(name)
+    local preset = { name = name, items = {} }
+    table.insert(presets.buy, preset)
+    table.insert(byPresetNames, name)
+    
+    jsonSave(json_file_presets, presets)
+    
+    buyPresetIndex.v = #presets.buy - 1
+
+    load_preset_buy()
+end
+
 function main()
     while not isSampAvailable() do
         wait(100)
@@ -154,17 +186,21 @@ function main()
     autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '['..string.upper(thisScript().name)..']: ', "https://github.com/ElRataAlada/CentralMarketReborn")
 
     if not doesFileExist(json_file_BuyList) then jsonSave(json_file_BuyList, {}) end
-    if not doesFileExist(json_file_myBuyList) then jsonSave(json_file_myBuyList, {}) end
     if not doesFileExist(json_file_mySellList) then jsonSave(json_file_mySellList, {}) end
+    if not doesFileExist(json_file_presets) then jsonSave(json_file_presets, { buy = { { name = "Default", items = { } } } }) end
 
-    itemsBuy = jsonRead(json_file_BuyList)
-    myitemsBuy = jsonRead(json_file_myBuyList)
-    myItemsSell = jsonRead(json_file_mySellList)
-
-    if not doesDirectoryExist(getWorkingDirectory()..'/config/Central Market/preset-buy') then createDirectory('moonloader\\config\\Central Market\\preset-buy') end
     if doesFileExist('moonloader/config/Central Market/ARZCentral-settings.ini') then inicfg.save(settings, 'Central Market\\ARZCentral-settings') end
 
 
+    itemsBuy = jsonRead(json_file_BuyList)
+    myItemsSell = jsonRead(json_file_mySellList)
+    presets = jsonRead(json_file_presets)
+
+    for i = 1, #presets.buy do
+        table.insert(byPresetNames, presets.buy[i].name)
+    end
+
+    load_preset_buy()
     parseAvgPrices()
     
     if not settings.main.imgui then sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Скрипт загружен. Команда активации: {'..settings.main.color..'}/cmr{FFFFFF}.', settings.main.colormsg) end
@@ -209,6 +245,10 @@ function sampev.onServerMessage(color, text)
         return false
     end
     
+    if buyProc and text:find("[Ошибка]") then
+        return false
+    end
+
     if sellProc and text:find("Выставлено") then
         return false
     end
@@ -616,7 +656,7 @@ end)
     if title:find('Поиск товара') and text:find('Введите наименование товара') and buyProc then
         lua_thread.create(function()
             wait(parserBuf.v)
-            sampSendDialogResponse(id, 1, 1, myitemsBuy[idt][1])
+            sampSendDialogResponse(id, 1, 1, presets.buy[buyPresetIndex.v + 1].items[idt][1])
         end)
     end
     
@@ -624,7 +664,7 @@ end)
         lua_thread.create(function()
             local ditem = 0
             for n in text:gmatch('[^\r\n]+') do
-                if n:find(myitemsBuy[idt][1], 0, true) then
+                if n:find(presets.buy[buyPresetIndex.v + 1].items[idt][1], 0, true) then
                     wait(delayInt.v)
                     sampSendDialogResponse(id, 1, ditem)
                     break
@@ -651,10 +691,11 @@ end)
         if text:find('Введите цену за товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
-                sampSendDialogResponse(id, 1, 0, myitemsBuy[idt][3])
+                sampSendDialogResponse(id, 1, 0, presets.buy[buyPresetIndex.v + 1].items[idt][3])
                 
-                if tonumber(idt) == tonumber(#myitemsBuy) then
+                if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
                     local isEndBuy = true
+                    setState(STATES.mainWindowState)
                     sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
                 else
                     idt = idt + 1
@@ -663,10 +704,11 @@ end)
         elseif text:find('Введите количество и цену за один товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
-                sampSendDialogResponse(id, 1, 0, myitemsBuy[idt][2]..", "..myitemsBuy[idt][3]) 
-           
-                if tonumber(idt) == tonumber(#myitemsBuy) then
+                sampSendDialogResponse(id, 1, 0, presets.buy[buyPresetIndex.v + 1].items[idt][2]..", "..presets.buy[buyPresetIndex.v + 1].items[idt][3]) 
+                
+                if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
                     local isEndBuy = true
+                    setState(STATES.mainWindowState)
                     sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
                 else
                     idt = idt + 1
@@ -952,9 +994,41 @@ function imgui.OnDrawFrame()
         if mainWindowState then
             menu(imgui)
             if #itemsBuy ~= 0 then
-                imgui.Text(u8"Все загруженные предметы:", imgui.SetCursorPosX(170))
+                if imgui.Button(fa.ICON_FA_TRASH, imgui.ImVec2(30, 20)) then
+                    if #presets.buy > 1 then
+                        table.remove(byPresetNames, buyPresetIndex.v + 1)
+                        table.remove(presets.buy, buyPresetIndex.v + 1)
+                        buyPresetIndex.v = 0
+                        jsonSave(json_file_presets, presets)
+                        load_preset_buy()
+                    end
+                end
+
                 imgui.SameLine()
-                imgui.Text(u8"Выбранные предметы:", imgui.SetCursorPosX(565))
+
+                if imgui.Combo(u8'Пресет', buyPresetIndex, byPresetNames, #byPresetNames) then
+                    load_preset_buy()
+                end
+
+                imgui.SameLine()
+                imgui.Dummy(imgui.ImVec2(10, 2))
+                imgui.SameLine()
+                
+                imgui.Text(u8'Добавить пресет: ')
+                imgui.SameLine()
+                imgui.InputText(u8'##1', buyPresetNameInput)
+                imgui.SameLine()
+                imgui.Dummy(imgui.ImVec2(1, 0))
+                imgui.SameLine()
+                
+                if imgui.Button(fa['ICON_FA_PLUS'], imgui.ImVec2(30, 20)) then
+                    if buyPresetNameInput.v ~= '' then
+                        create_preset_buy(buyPresetNameInput.v)
+                        buyPresetNameInput.v = ''
+                        load_preset_buy()
+                    end
+                end
+
                 imgui.BeginChild('#dfgdfg', imgui.ImVec2(500, 500))
                 imgui.InputText(u8'Поиск по названию', findBuf)
                 imgui.Separator()
@@ -970,7 +1044,7 @@ function imgui.OnDrawFrame()
                 for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
                     local f = itemsBuy[i]
                         
-                    local incart = check_table(itemsBuy[i][1], myitemsBuy)
+                    local incart = check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items)
 
                         if incart then                     
                             imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
@@ -979,15 +1053,14 @@ function imgui.OnDrawFrame()
                         end
 
                         if imgui.Button(u8(itemsBuy[i][1])) then
-                           
 
-                            if not check_table(itemsBuy[i][1], myitemsBuy) then
-                            table.insert(myitemsBuy, {itemsBuy[i][1], (settings.main.classiccount), (settings.main.classicprice), true})
-                            jsonSave(json_file_myBuyList, myitemsBuy)
-                            else
-                                local name = itemsBuy[i][1]
-                                table.remove(myitemsBuy, check_index(name, myitemsBuy))
-                                jsonSave(json_file_myBuyList, myitemsBuy)
+                            if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
+                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], (settings.main.classiccount), (settings.main.classicprice), true})
+                            jsonSave(json_file_presets, presets)
+                        else
+                            local name = itemsBuy[i][1]
+                            table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
+                            jsonSave(json_file_presets, presets)
                         end
                         end
 
@@ -1003,7 +1076,7 @@ function imgui.OnDrawFrame()
                             local pat1 = string.rlower(itemsBuy[i][1])
                             local pat2 = string.rlower(u8:decode(findBuf.v))                  
                             if pat1:find(pat2, 0, true) then
-                                local incart = check_table(itemsBuy[i][1], myitemsBuy)
+                                local incart = check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items)
 
                                 if incart then                     
                                     imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
@@ -1013,13 +1086,13 @@ function imgui.OnDrawFrame()
 
                                 if imgui.Button(u8(itemsBuy[i][1])) then
                                    
-                                    if not check_table(itemsBuy[i][1], myitemsBuy) then
-                                    table.insert(myitemsBuy, {itemsBuy[i][1], 1, 10, true})
-                                    jsonSave(json_file_myBuyList, myitemsBuy)
+                                    if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
+                                    table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], 1, 10, true})
+                                    jsonSave(json_file_presets, presets)
                                     else
                                         local name = itemsBuy[i][1]
-                                        table.remove(myitemsBuy, check_index(name, myitemsBuy))
-                                        jsonSave(json_file_myBuyList, myitemsBuy)
+                                        table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
+                                        jsonSave(json_file_presets, presets)
                                 end
 
                             end
@@ -1041,7 +1114,7 @@ function imgui.OnDrawFrame()
                         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Проверка товаров.', settings.main.colormsg)
 
                 end
-                if imgui.Button(u8"Очистить", imgui.ImVec2(120, 20), imgui.SameLine()) then myitemsBuy = {} jsonSave(json_file_myBuyList, myitemsBuy) end
+                if imgui.Button(u8"Очистить", imgui.ImVec2(120, 20), imgui.SameLine()) then presets.buy[buyPresetIndex.v + 1].items = {} jsonSave(json_file_presets, presets) end
                 imgui.Separator()
                 if settings.main.smoothscroll then
                     imgui.BeginChild("##scroll2", imgui.ImVec2(249, 470), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1049,13 +1122,13 @@ function imgui.OnDrawFrame()
                     else
                         imgui.BeginChild("##scroll2", imgui.ImVec2(240, 400))
                     end
-                    if myitemsBuy ~= nil then
-                    for i, _ in ipairs(myitemsBuy) do
-                            if imgui.Button(u8(myitemsBuy[i][1])) then
+                    if presets.buy[buyPresetIndex.v + 1].items ~= nil then
+                    for i, _ in ipairs(presets.buy[buyPresetIndex.v + 1].items) do
+                            if imgui.Button(u8(presets.buy[buyPresetIndex.v + 1].items[i][1])) then
                                
 
-                                table.remove(myitemsBuy, i)
-                                jsonSave(json_file_myBuyList, myitemsBuy)
+                                table.remove(presets.buy[buyPresetIndex.v + 1].items, i)
+                                jsonSave(json_file_presets, presets)
                                 break
                             end
                     end
@@ -1108,40 +1181,44 @@ function imgui.OnDrawFrame()
                     imgui.BeginChild("##1", imgui.ImVec2(500, 470), false)
                 end
                 if findBuf.v == '' then
-                local clipper = imgui.ImGuiListClipper(#itemsSell)
+                    local clipper = imgui.ImGuiListClipper(#itemsSell)
                     while clipper:Step() do                       
-                for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
-                    local f = itemsSell[i]
+                        for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
+                            local f = itemsSell[i]
 
-                    local incart = check_table(itemsSell[i][1], myItemsSell)
+                            local incart = check_table(itemsSell[i][1], myItemsSell)
 
-                    if incart then                        
-                        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
-                        imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(0.25, 0.25, 0.25, 1))
-                        imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.3, 0.3, 0.3, 1))
-                    end
+                            if incart then                        
+                                imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
+                                imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(0.25, 0.25, 0.25, 1))
+                                imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.3, 0.3, 0.3, 1))
+                            end
 
-                    if imgui.Button(u8(itemsSell[i][1])) then
-                       
+                            if imgui.Button(u8(itemsSell[i][1])) then
+                            
 
-                        if not check_table(itemsSell[i][1], myItemsSell) then
-                            table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], (settings.main.classicprice), true})
-                            jsonSave(json_file_mySellList, myItemsSell)
-                        else
-                            local name = itemsSell[i][1]
-                            table.remove(myItemsSell, check_index(name, myItemsSell))
-                            jsonSave(json_file_mySellList, myItemsSell)
+                                if not check_table(itemsSell[i][1], myItemsSell) then
+                                    table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], (settings.main.classicprice), true})
+                                    jsonSave(json_file_mySellList, myItemsSell)
+                                else
+                                    local name = itemsSell[i][1]
+                                    table.remove(myItemsSell, check_index(name, myItemsSell))
+                                    jsonSave(json_file_mySellList, myItemsSell)
+                                end
+                            end
+
+                            imgui.SameLine()
+
+                            imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
+
+                            if incart then
+                                imgui.PopStyleColor(3)
+                            end
                         end
                     end
 
-                    if incart then
-                        imgui.PopStyleColor(3)
-                    end
                 end
-            end
-
-            end
-                for i, _ in ipairs(itemsSell) do
+                for i = 1, #itemsSell do
                     if findBuf.v ~= '' then
                         local isFounded = false
                             local pat1 = string.rlower(itemsSell[i][1])
@@ -1167,6 +1244,10 @@ function imgui.OnDrawFrame()
                                     jsonSave(json_file_mySellList, myItemsSell)
                                 end
 
+                                imgui.SameLine()
+
+                                imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
+
                             end
                             if incart then
                                 imgui.PopStyleColor(3)
@@ -1184,14 +1265,12 @@ function imgui.OnDrawFrame()
                     if #itemsBuy == 0 then
                         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Сначала просканируйте предметы для скупки!', settings.main.colormsg)
                     else
-                        
-                            sampSendChat('/stats')
-                            sampSendDialogResponse(235, 1, -1, nil)
-                            itemsSell = {}
-                            itemsSellPosition = {}
-                            myItemsSell = jsonRead(json_file_mySellList)
-                            check = true
-                       
+                        sampSendChat('/stats')
+                        sampSendDialogResponse(235, 1, -1, nil)
+                        itemsSell = {}
+                        itemsSellPosition = {}
+                        myItemsSell = jsonRead(json_file_mySellList)
+                        check = true
                     end
                 end
                 if imgui.Button(u8"Очистить", imgui.ImVec2(140, 20), imgui.SameLine()) then myItemsSell = {} jsonSave(json_file_mySellList, myItemsSell) end
@@ -1204,13 +1283,12 @@ function imgui.OnDrawFrame()
                     end
                     if myItemsSell ~= nil then
                     for i, _ in ipairs(myItemsSell) do
-                            if imgui.Button(u8(myItemsSell[i][1])) then
-                                
 
-                                table.remove(myItemsSell, i)
-                                jsonSave(json_file_mySellList, myItemsSell)
-                                break
-                            end
+                        if imgui.Button(u8(myItemsSell[i][1])) then
+                            table.remove(myItemsSell, i)
+                            jsonSave(json_file_mySellList, myItemsSell)
+                            break
+                        end
                     end
                 end
                     imgui.EndChild()
@@ -1227,11 +1305,11 @@ function imgui.OnDrawFrame()
                     removeSell = true
                     press_alt()
                 end
+            
             else
                 imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже!")
+                
                 if imgui.Button(u8'Сканер', imgui.ImVec2(330, 25)) then
-                    
-
                     if #itemsBuy == 0 then
                         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Сначала просканируйте предметы для скупки!', settings.main.colormsg)
                     else
@@ -1291,8 +1369,6 @@ function imgui.OnDrawFrame()
                     imgui.EndChild()
                     imgui.BeginChild("##21", imgui.ImVec2(250, 470), imgui.SameLine())
                     if imgui.Button(u8'Сканер', imgui.ImVec2(120, 25)) then
-                        
-
                         check, checkmode, itemsBuy = not check, 2, ({})
                         sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
                     end
@@ -1389,8 +1465,8 @@ function imgui.OnDrawFrame()
                     imgui.BeginChild("##3", imgui.ImVec2(460, 450))
                 end
                 if findMyItem ~= nil then
-                    for i, _ in ipairs(myitemsBuy) do
-                        local pat1 = string.rlower(myitemsBuy[i][1])
+                    for i = 1, #presets.buy[buyPresetIndex.v + 1].items do
+                        local pat1 = string.rlower(presets.buy[buyPresetIndex.v + 1].items[i][1])
                             local pat2 = string.rlower(u8:decode(findMyItem.v))                  
                             if pat1:find(pat2, 0, true) then
 
@@ -1399,19 +1475,25 @@ function imgui.OnDrawFrame()
                         local is_in_list = false
 
                         if avg_prices ~= nil then
-                            if avg_prices.list[myitemsBuy[i][1]] ~= nil then
+                            if avg_prices.list[presets.buy[buyPresetIndex.v + 1].items[i][1]] ~= nil then
                                 is_in_list = true
                             end
                         end
 
                         if avg_prices ~= nil and is_in_list then
-                            text = " | Средняя цена: " .. comma_value(avg_prices.list[myitemsBuy[i][1]].sa.price).." $"
+                            local price = avg_prices.list[presets.buy[buyPresetIndex.v + 1].items[i][1]].sa.price
+
+                            if type(price) == "table" then
+                                text = " | Средняя цена: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
+                            else
+                                text = " | Средняя цена: " .. comma_value(price).." $"
+                            end
                         end
 
-                        imgui.TextColoredRGB(i .. ' - ' .. myitemsBuy[i][1]..text)
+                        imgui.TextColoredRGB(i .. ' - ' .. presets.buy[buyPresetIndex.v + 1].items[i][1]..text)
 
-                        local bcount = imgui.ImInt(myitemsBuy[i][2])
-                        local bprice = imgui.ImInt(myitemsBuy[i][3])
+                        local bcount = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][2])
+                        local bprice = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][3])
                         
                         imgui.Text(u8('Кол-во.'))
                         imgui.SameLine()
@@ -1421,14 +1503,14 @@ function imgui.OnDrawFrame()
                         imgui.InputInt(('##price' .. i), bprice)
 
                         
-                        if myitemsBuy[i][2] ~= bcount.v then
-                            myitemsBuy[i][2] = bcount.v
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if presets.buy[buyPresetIndex.v + 1].items[i][2] ~= bcount.v then
+                            presets.buy[buyPresetIndex.v + 1].items[i][2] = bcount.v
+                            jsonSave(json_file_presets, presets)
                         end
                         
-                        if myitemsBuy[i][3] ~= bprice.v then
-                            myitemsBuy[i][3] = bprice.v
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if presets.buy[buyPresetIndex.v + 1].items[i][3] ~= bprice.v then
+                            presets.buy[buyPresetIndex.v + 1].items[i][3] = bprice.v
+                            jsonSave(json_file_presets, presets)
                         end
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(20,0))
@@ -1436,21 +1518,21 @@ function imgui.OnDrawFrame()
                         
                         
                         if imgui.ButtonClickable(i ~= 1, fa.ICON_FA_ARROW_UP .. '##1' .. i) then
-                            myitemsBuy[i][1], myitemsBuy[i-1][1] = myitemsBuy[i-1][1], myitemsBuy[i][1]
-                            myitemsBuy[i][2], myitemsBuy[i-1][2] = myitemsBuy[i-1][2], myitemsBuy[i][2]
-                            myitemsBuy[i][3], myitemsBuy[i-1][3] = myitemsBuy[i-1][3], myitemsBuy[i][3]
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                            presets.buy[buyPresetIndex.v + 1].items[i][1], presets.buy[buyPresetIndex.v + 1].items[i-1][1] = presets.buy[buyPresetIndex.v + 1].items[i-1][1], presets.buy[buyPresetIndex.v + 1].items[i][1]
+                            presets.buy[buyPresetIndex.v + 1].items[i][2], presets.buy[buyPresetIndex.v + 1].items[i-1][2] = presets.buy[buyPresetIndex.v + 1].items[i-1][2], presets.buy[buyPresetIndex.v + 1].items[i][2]
+                            presets.buy[buyPresetIndex.v + 1].items[i][3], presets.buy[buyPresetIndex.v + 1].items[i-1][3] = presets.buy[buyPresetIndex.v + 1].items[i-1][3], presets.buy[buyPresetIndex.v + 1].items[i][3]
+                            jsonSave(json_file_presets, presets)
                         end
                         
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(1,0))
                         imgui.SameLine()
                         
-                        if imgui.ButtonClickable(i ~= tonumber(#myitemsBuy), fa.ICON_FA_ARROW_DOWN .. '##2' .. i) then
-                            myitemsBuy[i][1], myitemsBuy[i+1][1] = myitemsBuy[i+1][1], myitemsBuy[i][1]
-                            myitemsBuy[i][2], myitemsBuy[i+1][2] = myitemsBuy[i+1][2], myitemsBuy[i][2]
-                            myitemsBuy[i][3], myitemsBuy[i+1][3] = myitemsBuy[i+1][3], myitemsBuy[i][3]
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if imgui.ButtonClickable(i ~= tonumber(#presets.buy[buyPresetIndex.v + 1].items), fa.ICON_FA_ARROW_DOWN .. '##2' .. i) then
+                            presets.buy[buyPresetIndex.v + 1].items[i][1], presets.buy[buyPresetIndex.v + 1].items[i+1][1] = presets.buy[buyPresetIndex.v + 1].items[i+1][1], presets.buy[buyPresetIndex.v + 1].items[i][1]
+                            presets.buy[buyPresetIndex.v + 1].items[i][2], presets.buy[buyPresetIndex.v + 1].items[i+1][2] = presets.buy[buyPresetIndex.v + 1].items[i+1][2], presets.buy[buyPresetIndex.v + 1].items[i][2]
+                            presets.buy[buyPresetIndex.v + 1].items[i][3], presets.buy[buyPresetIndex.v + 1].items[i+1][3] = presets.buy[buyPresetIndex.v + 1].items[i+1][3], presets.buy[buyPresetIndex.v + 1].items[i][3]
+                            jsonSave(json_file_presets, presets)
                         end
                         imgui.TextColoredRGB('Всего: ' .. yellowText(comma_value(bcount.v * bprice.v)) .. ' $')
                         imgui.Separator()
@@ -1459,42 +1541,42 @@ function imgui.OnDrawFrame()
                 end
                 
                 if findMyItem.v == nil then
-                    local clipper = imgui.ImGuiListClipper(#myitemsBuy)
+                    local clipper = imgui.ImGuiListClipper(#presets.buy[buyPresetIndex.v + 1].items)
                     while clipper:Step() do                       
                         for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
-                            imgui.Text(u8(i .. ' - ' .. myitemsBuy[i][1]))
+                            imgui.Text(u8(i .. ' - ' .. presets.buy[buyPresetIndex.v + 1].items[i][1]))
                             
-                            local bcount = imgui.ImInt(myitemsBuy[i][2])
-                            local bprice = imgui.ImInt(myitemsBuy[i][3])
+                            local bcount = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][2])
+                            local bprice = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][3])
                             imgui.InputInt(('##count' .. i), bcount)
                             imgui.InputInt(('##price' .. i), bprice)
                             
-                        if myitemsBuy[i][2] ~= bcount.v then
-                            myitemsBuy[i][2] = bcount.v
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if presets.buy[buyPresetIndex.v + 1].items[i][2] ~= bcount.v then
+                            presets.buy[buyPresetIndex.v + 1].items[i][2] = bcount.v
+                            jsonSave(json_file_presets, presets)
                         end
 
-                        if myitemsBuy[i][3] ~= bprice.v then
-                            myitemsBuy[i][3] = bprice.v
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if presets.buy[buyPresetIndex.v + 1].items[i][3] ~= bprice.v then
+                            presets.buy[buyPresetIndex.v + 1].items[i][3] = bprice.v
+                            jsonSave(json_file_presets, presets)
                         end
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(20,0))
                         imgui.SameLine()
                         if imgui.ButtonClickable(i ~= 1, fa.ICON_FA_ARROW_UP .. '##1' .. i) then
-                            myitemsBuy[i][1], myitemsBuy[i-1][1] = myitemsBuy[i-1][1], myitemsBuy[i][1]
-                            myitemsBuy[i][2], myitemsBuy[i-1][2] = myitemsBuy[i-1][2], myitemsBuy[i][2]
-                            myitemsBuy[i][3], myitemsBuy[i-1][3] = myitemsBuy[i-1][3], myitemsBuy[i][3]
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                            presets.buy[buyPresetIndex.v + 1].items[i][1], presets.buy[buyPresetIndex.v + 1].items[i-1][1] = presets.buy[buyPresetIndex.v + 1].items[i-1][1], presets.buy[buyPresetIndex.v + 1].items[i][1]
+                            presets.buy[buyPresetIndex.v + 1].items[i][2], presets.buy[buyPresetIndex.v + 1].items[i-1][2] = presets.buy[buyPresetIndex.v + 1].items[i-1][2], presets.buy[buyPresetIndex.v + 1].items[i][2]
+                            presets.buy[buyPresetIndex.v + 1].items[i][3], presets.buy[buyPresetIndex.v + 1].items[i-1][3] = presets.buy[buyPresetIndex.v + 1].items[i-1][3], presets.buy[buyPresetIndex.v + 1].items[i][3]
+                            jsonSave(json_file_presets, presets)
                         end
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(1,0))
                         imgui.SameLine()
-                        if imgui.ButtonClickable(i ~= tonumber(#myitemsBuy), fa.ICON_FA_ARROW_DOWN .. '##2' .. i) then
-                            myitemsBuy[i][1], myitemsBuy[i+1][1] = myitemsBuy[i+1][1], myitemsBuy[i][1]
-                            myitemsBuy[i][2], myitemsBuy[i+1][2] = myitemsBuy[i+1][2], myitemsBuy[i][2]
-                            myitemsBuy[i][3], myitemsBuy[i+1][3] = myitemsBuy[i+1][3], myitemsBuy[i][3]
-                            jsonSave(json_file_myBuyList, myitemsBuy)
+                        if imgui.ButtonClickable(i ~= tonumber(#presets.buy[buyPresetIndex.v + 1].items), fa.ICON_FA_ARROW_DOWN .. '##2' .. i) then
+                            presets.buy[buyPresetIndex.v + 1].items[i][1], presets.buy[buyPresetIndex.v + 1].items[i+1][1] = presets.buy[buyPresetIndex.v + 1].items[i+1][1], presets.buy[buyPresetIndex.v + 1].items[i][1]
+                            presets.buy[buyPresetIndex.v + 1].items[i][2], presets.buy[buyPresetIndex.v + 1].items[i+1][2] = presets.buy[buyPresetIndex.v + 1].items[i+1][2], presets.buy[buyPresetIndex.v + 1].items[i][2]
+                            presets.buy[buyPresetIndex.v + 1].items[i][3], presets.buy[buyPresetIndex.v + 1].items[i+1][3] = presets.buy[buyPresetIndex.v + 1].items[i+1][3], presets.buy[buyPresetIndex.v + 1].items[i][3]
+                            jsonSave(json_file_presets, presets)
                         end
                         imgui.Separator()
                 end
@@ -1518,8 +1600,8 @@ function imgui.OnDrawFrame()
                         sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Нажмите на кнопку {'..settings.main.color..'}«Прекратить покупку товара»' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg) end
                 imgui.EndGroup()
             local mon = 0
-            for i, n in pairs(myitemsBuy) do 
-                mon = mon + (myitemsBuy[i][2] * myitemsBuy[i][3])
+            for i, n in pairs(presets.buy[buyPresetIndex.v + 1].items) do 
+                mon = mon + (presets.buy[buyPresetIndex.v + 1].items[i][2] * presets.buy[buyPresetIndex.v + 1].items[i][3])
             end
             if getPlayerMoney() < mon then color = "{ff2400}" else color = "{178f2b}" end
             imgui.Text(u8("Всего будет потрачено: "..comma_value(mon).." $"))
