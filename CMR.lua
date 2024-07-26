@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.1.3')
+script_version('1.1.4')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -249,10 +249,6 @@ function sampev.onServerMessage(color, text)
         return false
     end
 
-    if sellProc and text:find("Выставлено") then
-        return false
-    end
-
 end
 
 function getPageFromPosition(position)
@@ -358,10 +354,32 @@ function sellProcess()
     if sellProc then
         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Выставляю товары на продажу! Подождите', settings.main.colormsg)
         
-        inventoryPages = {2075, 2076, 2077, 2078, 2079}
         sampCloseCurrentDialogWithButton(0)
-
         wait(delayInt.v*2)
+        
+        inventoryPagesPos = {
+            {380, 351},
+            {389, 351},
+            {399, 351},
+            {408, 351},
+            {418, 351}
+        }
+
+        inventoryPages = {}
+
+        for i = 0 , 4096 do
+            if sampTextdrawIsExists(i) then
+                x , y = sampTextdrawGetPos(i)
+
+                for pos = 1, #inventoryPagesPos do
+                    if math.modf(x) == inventoryPagesPos[pos][1] and math.modf(y) == inventoryPagesPos[pos][2] then
+                        table.insert(inventoryPages, i)
+                        break
+                    end
+                end
+            end
+        end
+
         local prevPage = 1
 
         for name = 1, #myItemsSell do
@@ -444,20 +462,15 @@ function sellProcess()
                             end
 
                             if sampGetCurrentDialogId() == 26540 then
-                                print("SELLING: " .. myItemsSell[name][1] .. " amount: " .. amount .. " total: " .. total)
-                                
                                 if total == 1 and toSell == 1 then
-                                    print("SELL1")
                                     sampSendDialogResponse(26540, 1, nil, price)
                                     toSell = 0
                                     
                                 elseif amount >= toSell then
-                                    print("SELL2")
                                     sampSendDialogResponse(26540, 1, nil, toSell .. ", " .. price)
                                     toSell = 0
                                     
                                 elseif amount < toSell then
-                                    print("SELL3")
                                     sampSendDialogResponse(26540, 1, nil, amount .. ", " .. price)
                                     toSell = toSell - amount
                                 end
