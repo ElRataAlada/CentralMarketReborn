@@ -105,7 +105,7 @@ function autoupdate(json_url, prefix, url)
                 lua_thread.create(function(prefix)
                   local dlstatus = require('moonloader').download_status
                   local color = -1
-                  sampAddChatMessage((prefix..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), settings.main.colormsg)
+                  sampAddChatMessage((prefix..'{FFFFFF}Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), settings.main.colormsg)
                   wait(250)
                   downloadUrlToFile(updatelink, thisScript().path,
                     function(id3, status1, p13, p23)
@@ -113,13 +113,13 @@ function autoupdate(json_url, prefix, url)
                         print(string.format('Загружено %d из %d.', p13, p23))
                       elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
                         print('Загрузка обновления завершена.')
-                        sampAddChatMessage((prefix..'Обновление завершено!'), settings.main.colormsg)
+                        sampAddChatMessage((prefix..'{FFFFFF}Обновление завершено!'), settings.main.colormsg)
                         goupdatestatus = true
                         lua_thread.create(function() wait(500) thisScript():reload() end)
                       end
                       if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                         if goupdatestatus == nil then
-                          sampAddChatMessage((prefix..'Обновление прошло неудачно. Запускаю устаревшую версию..'), settings.main.colormsg)
+                          sampAddChatMessage((prefix..'{FFFFFF}Обновление прошло неудачно. Запускаю устаревшую версию..'), settings.main.colormsg)
                           update = false
                         end
                       end
