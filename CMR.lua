@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.1.5')
+script_version('1.2.0')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -28,7 +28,7 @@ local buyPresetNameInput = imgui.ImBuffer(124)
 
 local settings = inicfg.load({
     main = {
-        useAvgPrice = false,
+        commision = 4,
         delayParse = 50,
         delayVist = 200,
         color = 'B22222',
@@ -46,7 +46,8 @@ local settings = inicfg.load({
 local allWindow = imgui.ImBool(false)
 local last_list = nil
 local mainWindowState, buyWindowState, sellWindowState , settingWindowState, secondarybuyWindowState, secondaryWindowState, presetWindowState, delprod, infoWindowState, sellWindow2State = true, false, false, false, false, false, false, false, false, false
-local rbut, findBuf, findBufInt, parserBuf, delayInt, afilename, selectPresetMode, selectStyle, smooth, smoothInt1, smoothInt2, findMyItem, ccount, cprice, useAvgPrice = imgui.ImInt(1), imgui.ImBuffer(124), imgui.ImInt(0), imgui.ImInt(settings.main.delayParse), imgui.ImInt(settings.main.delayVist), imgui.ImBuffer(200), imgui.ImInt(1), imgui.ImInt(-1), imgui.ImBool(settings.main.smoothscroll), imgui.ImInt(settings.main.smoothhigh), imgui.ImInt(settings.main.smoothdelay), imgui.ImBuffer(124), imgui.ImInt(settings.main.classiccount), imgui.ImInt(settings.main.classicprice), imgui.ImBool(settings.main.useAvgPrice)
+local rbut, findBuf, findBufInt, parserBuf, delayInt, afilename, selectPresetMode, selectStyle, smooth, smoothInt1, smoothInt2, findMyItem, ccount, cprice = imgui.ImInt(1), imgui.ImBuffer(124), imgui.ImInt(0), imgui.ImInt(settings.main.delayParse), imgui.ImInt(settings.main.delayVist), imgui.ImBuffer(200), imgui.ImInt(1), imgui.ImInt(-1), imgui.ImBool(settings.main.smoothscroll), imgui.ImInt(settings.main.smoothhigh), imgui.ImInt(settings.main.smoothdelay), imgui.ImBuffer(124), imgui.ImInt(settings.main.classiccount), imgui.ImInt(settings.main.classicprice)
+local commision = imgui.ImInt(settings.main.commision)
 
 STATES = {
     buyWindowState = "0",
@@ -175,74 +176,6 @@ function create_preset_buy(name)
     load_preset_buy()
 end
 
-function load_avg_prices_wiki()
-
-    lua_thread.create(function()
-
-        local s = require("requests")
-    
-        local page = 1
-        local r = ""
-        local items = {}
-    
-        while true do
-            wait(1000)
-    
-            if page == 1 then
-                r = s.get("https://arz-wiki.com/arz-rp/items/")
-            else
-                r = s.get("https://arz-wiki.com/arz-rp/items/page/"..page.."/")
-            end
-    
-            sampAddChatMessage(page, -1)
-
-            page = page + 1
-    
-            if r.status_code ~= 200 then
-                break
-            end
-    
-            local html = r.text
-            
-            local file = io.open(getWorkingDirectory()..'\\config\\prices.html', 'w')
-            file:write(html)
-            file:close()
-
-            local start = 0
-            local finish = 0
-    
-            while true do
-                wait(1000)
-                
-                -- <a class="card card--item  " href="https://arz-wiki.com/arz-rp/items/musornyj-paket/" title="Мусорный пакет">
-                
-                start = html:find('<a class="card', finish)
-                finish = html:find('" title=', start)
-
-                if start == nil or finish == nil then
-                    break
-                end
-
-                local link = html:
-
-
-
-
-
-
-
-
-
-
-                print('[ Central Market Reborn ]: {FFFFFF}Загружаю данные о предмете: '..name, settings.main.colormsg)
-                print('[ Central Market Reborn ]: {FFFFFF}Ссылка: '..link, settings.main.colormsg)
-    
-            end
-        end
-
-    end)
-end
-
 
 function main()
     while not isSampAvailable() do
@@ -258,13 +191,14 @@ function main()
     if not doesFileExist(json_file_mySellList) then jsonSave(json_file_mySellList, {}) end
     if not doesFileExist(json_file_presets) then jsonSave(json_file_presets, { buy = { { name = "Default", items = { } } } }) end
 
+    
     if doesFileExist('moonloader/config/Central Market/ARZCentral-settings.ini') then inicfg.save(settings, 'Central Market\\ARZCentral-settings') end
-
-    -- load_avg_prices_wiki()
-
+    
     itemsBuy = jsonRead(json_file_BuyList)
     myItemsSell = jsonRead(json_file_mySellList)
     presets = jsonRead(json_file_presets)
+    
+    selectStyle.v = settings.main.stylemode
 
     for i = 1, #presets.buy do
         table.insert(byPresetNames, presets.buy[i].name)
@@ -514,15 +448,6 @@ function sellProcess()
                             sampSendClickTextdraw(textDrawsPositions[td_positions][1])
                             wait(delayInt.v)
 
-                            if avg_prices ~= nil and myItemsSell[name][3] == 10 and settings.main.useAvgPrice then
-                                if avg_prices.list[myItemsSell[name][1]] ~= nil then
-                                    price = avg_prices.list[myItemsSell[name][1]].sa.price
-                                    
-                                    if type(price) == "table" then
-                                        price = price[1]
-                                    end
-                                end
-                            end 
 
                             if sampGetCurrentDialogId() ~= 26540 then
                                 fixDialogBug()
@@ -1081,7 +1006,7 @@ function imgui.OnDrawFrame()
     local cx, cy = select(1, getScreenResolution()), select(2, getScreenResolution())
     local sw, sh = getScreenResolution()
 	if allWindow.v then
-        imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.55), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+        imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
         imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
         imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
 
@@ -1513,41 +1438,6 @@ function imgui.OnDrawFrame()
 
 
 
-        if secondarybuyWindowState then
-            local isWarning = false
-                imgui.BeginChild("##31", imgui.ImVec2(460, 450))
-                    for i, n in pairs(inputsSell) do 
-                        if itemsBuy[inputsSell[i][3]][4] then
-                            imgui.Text(u8(" Предмет: "..itemsBuy[inputsSell[i][3]][1]), imgui.Separator())
-                            if not inputsSell[i][5].v then imgui.InputInt(u8("##sellc"..i), inputsSell[i][1]) imgui.SameLine() imgui.Text(u8("- "..inputsSell[i][1].v..' шт. / '..itemsBuy[inputsSell[i][3]][2].." шт.")) end
-                            imgui.InputInt(u8("##sell"..i), inputsSell[i][2])
-                            imgui.SameLine()
-                            imgui.Text(u8("- "..comma_value(inputsSell[i][2].v).."$"))
-                            if inputsSell[i][2].v < 10 then imgui.TextColoredRGB("{FF2400}Минимальная цена товара 10$!") isWarning = true end
-                            if inputsSell[i][1].v * inputsSell[i][2].v > 300000000 then imgui.TextColoredRGB("{FF2400}Максимальная цена товара 300.000.000$!") isWarning = true end
-                            if inputsSell[i][1].v > itemsBuy[inputsSell[i][3]][2] then imgui.TextColoredRGB("{FF2400}У вас нету столько товаров на продажу.") isWarning = true end
-                            imgui.Separator()
-                        end
-                    end
-                    imgui.EndChild()
-                    imgui.BeginGroup(imgui.SameLine())
-                    if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then secondarybuyWindowState = false buyWindowState = true end
-                    if imgui.Button(u8"Начать Продажу", imgui.ImVec2(240, 75)) then 
-                        sellP, shopMode = not buyProc, 2 press_alt() for i=1, #inputsSell do itemsBuy[inputsSell[i][3]][2] = inputsSell[i][1].v itemsBuy[inputsSell[i][3]][3] = inputsSell[i][2].v itemsBuy[inputsSell[i][3]][5] = inputsSell[i][5].v cfgsell.itemsBuym[itemsBuy[inputsSell[i][3]][1]]=inputsSell[i][2].v inicfg.save(cfgsell, 'Central Market\\ARZCentral-sell.ini') end 
-                    end
-                    if imgui.Button(u8"Сохранить Конфиг", imgui.ImVec2(240, 75)) then for i=1, #inputsSell do cfgsell.itemsBuym[itemsBuy[inputsSell[i][3]][1]]=inputsSell[i][2].v inicfg.save(cfgsell, 'Central Market\\ARZCentral-sell.ini') end end
-                imgui.EndGroup()
-            local mon = 0
-            for i, n in pairs(inputsSell) do 
-                if inputsSell[i][5].v then mon = mon + inputsSell[i][2].v else
-                mon = mon + (inputsSell[i][1].v * inputsSell[i][2].v) end
-            end
-            imgui.Text(u8("Вы можете выставить товара на: "..comma_value(mon).." $"))
-        end
-
-
-
-
         if secondaryWindowState then
             local isWarning = false
             imgui.BeginChild("##3", imgui.ImVec2(460, 450), false)
@@ -1761,26 +1651,19 @@ function imgui.OnDrawFrame()
                         end
 
                         color = "{178f2b}"
-                        imgui.Dummy(imgui.ImVec2(1,0))
+                        imgui.Dummy(imgui.ImVec2(0,3))
+                        imgui.Dummy(imgui.ImVec2(4,0))
+                        imgui.SameLine()
                         imgui.TextColoredRGB(i .. ' - ' .. myItemsSell[i][1] .. ' | всего ' ..yellowText(comma_value(total_amount)).. ' шт.'..text)
-                        imgui.Dummy(imgui.ImVec2(1,0))
+                        
+                        imgui.Dummy(imgui.ImVec2(0,6))
+                        imgui.Dummy(imgui.ImVec2(4,0))
+                        imgui.SameLine()
 
                         local sellAll = imgui.ImBool(myItemsSell[i][4])
                         
                         local price = myItemsSell[i][3]
 
-                        if avg_prices ~= nil then
-                            if myItemsSell[i][3] == 10 and avg_prices.list[myItemsSell[i][1]] ~= nil and settings.main.useAvgPrice then
-                                price = avg_prices.list[myItemsSell[i][1]].sa.price
-                                
-                                if type(price) == "table" then
-                                    price = price[1]
-                                end
-                            else 
-                                price = myItemsSell[i][3]
-                            end
-                        end 
-                        
                         local bprice = imgui.ImInt(price)
                         local bcount = imgui.ImInt(sellAll.v and total_amount or myItemsSell[i][2])
                         
@@ -1793,11 +1676,11 @@ function imgui.OnDrawFrame()
                             elseif bcount.v > total_amount then
                                 bcount.v = total_amount
                             end
-
+                            
                             if sellAll.v then
                                 bcount.v = total_amount
                             end
-
+                            
                         end
                         
                         imgui.SameLine()
@@ -1806,14 +1689,16 @@ function imgui.OnDrawFrame()
                         if imgui.Checkbox(u8'Продать все'.."##"..i, sellAll) then
                             myItemsSell[i][4] = sellAll.v
                             jsonSave(json_file_mySellList, myItemsSell)
-
+                            
                             if sellAll.v then
                                 bcount.v = total_amount
                             else
                                 bcount.v = myItemsSell[i][2]
                             end
                         end           
-                           
+                        
+                        imgui.Dummy(imgui.ImVec2(4,0))
+                        imgui.SameLine()
                         imgui.Text(u8('Цена.   '))
                         imgui.SameLine()
                         if imgui.InputInt(('##price' .. i), bprice) then
@@ -1821,7 +1706,7 @@ function imgui.OnDrawFrame()
                                 bprice.v = 10
                             end
                         end
-
+                        
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(350,0))
                         imgui.SameLine()
@@ -1831,8 +1716,7 @@ function imgui.OnDrawFrame()
                             myItemsSell[i][3], myItemsSell[i-1][3] = myItemsSell[i-1][3], myItemsSell[i][3]
                             jsonSave(json_file_mySellList, myItemsSell)
                         end
-                        imgui.SameLine()
-                        imgui.Dummy(imgui.ImVec2(1,0))
+
                         imgui.SameLine()
                         if imgui.ButtonClickable(i ~= tonumber(#myItemsSell), fa.ICON_FA_ARROW_DOWN .. '##2' .. i) then
                             myItemsSell[i][1], myItemsSell[i+1][1] = myItemsSell[i+1][1], myItemsSell[i][1]
@@ -1845,15 +1729,20 @@ function imgui.OnDrawFrame()
                             myItemsSell[i][2] = bcount.v
                             jsonSave(json_file_mySellList, myItemsSell)
                         end
-
-                        if myItemsSell[i][3] ~= bprice.v and  not settings.main.useAvgPrice then
+                        
+                        if myItemsSell[i][3] ~= bprice.v then
                             myItemsSell[i][3] = bprice.v
                             jsonSave(json_file_mySellList, myItemsSell)
                         end   
-
-                        imgui.Dummy(imgui.ImVec2(1,0))
+                        
+                        imgui.Dummy(imgui.ImVec2(0,3))
+                        imgui.Dummy(imgui.ImVec2(4,0))
+                        imgui.SameLine()
                         imgui.TextColoredRGB('Всего: ' .. greenText(comma_value(bcount.v * bprice.v)) .. ' $')
-                        imgui.Dummy(imgui.ImVec2(1,0))
+                        imgui.Dummy(imgui.ImVec2(4,0))
+                        imgui.SameLine()
+                        imgui.TextColoredRGB('Коммисия: ' .. comma_value(math.modf((bcount.v * bprice.v)*commision.v/100))..' $ ( '..commision.v..'% )')
+                        imgui.Dummy(imgui.ImVec2(0,3))
                         imgui.Separator()
                     end
                     
@@ -1863,14 +1752,10 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.BeginGroup(imgui.SameLine())
                     if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then setState(STATES.sellWindowState) end
-                    imgui.Dummy(imgui.ImVec2(1,460))
+                    imgui.Dummy(imgui.ImVec2(1,470))
                     imgui.Dummy(imgui.ImVec2(15,0))
                     imgui.SameLine()
-                    if imgui.Checkbox(u8'Заполнять средними ценами', useAvgPrice) then
-                        settings.main.useAvgPrice = useAvgPrice.v
-                        inicfg.save(settings, 'Central Market\\ARZCentral-settings')
-                    end
-                    
+
                     imgui.Dummy(imgui.ImVec2(0,5))
                     if imgui.Button(u8"Начать продажу", imgui.ImVec2(240, 75)) then 
                         idt = 1
@@ -1879,12 +1764,13 @@ function imgui.OnDrawFrame()
                     end
                     
                 imgui.EndGroup()
-            local mon = 0
+            local total = 0
             for i, n in pairs(myItemsSell) do 
-                mon = mon + (myItemsSell[i][2] * myItemsSell[i][3])
+                total = total + (myItemsSell[i][2] * myItemsSell[i][3])
             end
-            color = "{178f2b}"
-            imgui.TextColoredRGB("Всего будет заработано: "..color..comma_value(mon).." $")
+            
+            imgui.TextColoredRGB(greenText(comma_value(total)).." $ - "..yellowText(comma_value(math.modf((total*commision.v)/100))).." $ ( "..commision.v.."% )")
+            imgui.TextColoredRGB("Всего будет заработано: "..greenText(comma_value(math.modf((total - (total*commision.v)/100)))).." $")
         end
 
 
@@ -1894,28 +1780,50 @@ function imgui.OnDrawFrame()
         if settingWindowState then
             menu(imgui)
 
-            imgui.PushItemWidth(290)
-            imgui.Text(u8'Задержка на парсер товаров ( смена странички )')
+            local margin_size = 20
+
+            imgui.PushItemWidth(400)
+            
+            imgui.Text(u8'Задержка для диалогов')
             if imgui.SliderInt('##delay2', parserBuf, 50, 200) then settings.main.delayParse = parserBuf.v inicfg.save(settings, 'Central Market\\ARZCentral-settings') end 
+            
             imgui.Text(u8'Задержка на выставление товаров')
             if imgui.SliderInt('##delay', delayInt, 50, 1000) then settings.main.delayVist = delayInt.v inicfg.save(settings, 'Central Market\\ARZCentral-settings') end 
-            if imgui.ListBox('##styleBox', selectStyle, {'Dark Style', 'Purple Style', 'Blue-Gray Style', 'Orange Style', 'Blue-Black', 'Green Style', 'Purpur Style', 'Red Style', 'Yellow Style'}, 9) then
+            
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
+
+            imgui.PushItemWidth(200)
+
+            if imgui.Combo(u8("Стиль"), selectStyle, {'Dark Style', 'Purple Style', 'Blue-Gray Style', 'Orange Style', 'Blue-Black', 'Green Style', 'Purpur Style', 'Red Style', 'Yellow Style'}, 9) then
                 if selectStyle.v == 0 then setDarkStyle() elseif selectStyle.v == 1 then setPurpleStyle() elseif selectStyle.v == 2 then  setBlueGraytheme() elseif selectStyle.v == 3 then setOrangeStyle() elseif selectStyle.v == 4 then setBlueBlackStyle() elseif selectStyle.v == 5 then setGreenStyle() elseif selectStyle.v == 6 then setPurpurStyle() elseif selectStyle.v == 7 then setRedStyle() elseif selectStyle.v == 8 then setYellowStyle() end
+                settings.main.style = selectStyle.v + 1
+                inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
+
+            if imgui.InputInt(u8'Коммисия на продажу %', commision) then
+                settings.main.commision = commision.v
+                inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+            end
+
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
+            
             if imgui.InputInt(u8'Количество при добавлении', ccount) then
                 settings.main.classiccount = ccount.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
-
+            
             if imgui.InputInt(u8'Цена при добавлении', cprice) then
                 settings.main.classicprice = cprice.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
-
-                if imgui.Checkbox(u8'Плавная прокрутка списков', smooth) then
+            
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
+            if imgui.Checkbox(u8'Плавная прокрутка списков', smooth) then
                 settings.main.smoothscroll = smooth.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
+            imgui.Dummy(imgui.ImVec2(0,1))
             if smooth.v then
                 if imgui.InputInt(u8'Строк за одно деление прокрутки', smoothInt1) then
                     settings.main.smoothhigh = smoothInt1.v
