@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.2.0')
+script_version('1.2.1')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -358,8 +358,8 @@ function sellProcess()
     if sellProc then
         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Выставляю товары на продажу! Подождите', settings.main.colormsg)
         
-        sampCloseCurrentDialogWithButton(0)
         wait(delayInt.v*2)
+        sampCloseCurrentDialogWithButton(0)
         
         inventoryPagesPos = {
             {380, 351},
@@ -401,7 +401,7 @@ function sellProcess()
             if myItemsSell[name][4] == true then
                 toSell = total
             end
-
+         
             if toSell <= 0 then
                 goto continue
             end
@@ -415,20 +415,11 @@ function sellProcess()
                 end
             end
 
-            for pos = 1,  #positions do
+            for pos = 1,  #positions do                
                 local page, position = getPageFromPosition(positions[pos][2])
-                
                 local price = myItemsSell[name][3]
                 local amount = positions[pos][1]
-                
                 local textDrawsPositions = {}
-
-                for i = 0, 4096 do
-                    if sampTextdrawIsExists(i) then
-                        posX, posY = sampTextdrawGetPos(i)
-                        table.insert(textDrawsPositions, {i, math.modf(posX), math.modf(posY)})
-                    end
-                end
                 
                 if sampTextdrawIsExists(inventoryPages[page]) then
 
@@ -438,23 +429,33 @@ function sellProcess()
                         wait(delayInt.v*3)
                     end
 
+                    for i = 0, 4096 do
+                        if sampTextdrawIsExists(i) then
+                            posX, posY = sampTextdrawGetPos(i)
+    
+                            table.insert(textDrawsPositions, {i, math.modf(posX), math.modf(posY)})
+                        end
+                    end
+
                     position = td[position + 1]
 
-                    for td_positions = 1, #textDrawsPositions do
-                        td_x = textDrawsPositions[td_positions][2]
-                        td_y = textDrawsPositions[td_positions][3]
+                    for td_position = 1, #textDrawsPositions do
+                        td_x = textDrawsPositions[td_position][2]
+                        td_y = textDrawsPositions[td_position][3]
 
                         if td_x == position[1] and td_y == position[2] then
-                            sampSendClickTextdraw(textDrawsPositions[td_positions][1])
+                            sampSendClickTextdraw(textDrawsPositions[td_position][1])
                             wait(delayInt.v)
 
 
                             if sampGetCurrentDialogId() ~= 26540 then
                                 fixDialogBug()
                                 wait(delayInt.v)
-                                sampSendClickTextdraw(textDrawsPositions[td_positions][1])
+                                sampSendClickTextdraw(textDrawsPositions[td_position][1])
                                 wait(delayInt.v)
                             end
+
+                            td_position = td_position + 1
 
                             if sampGetCurrentDialogId() == 26540 then
                                 if total == 1 and toSell == 1 then
@@ -485,19 +486,19 @@ function sellProcess()
 
     sampCloseCurrentDialogWithButton(0)
 
-    for i = 1, 4096 do
-        if sampTextdrawIsExists(i) then
-            x , y = sampTextdrawGetPos(i)
+    -- for i = 1, 4096 do
+    --     if sampTextdrawIsExists(i) then
+    --         x , y = sampTextdrawGetPos(i)
 
-            if math.modf(x) == 440 and math.modf(y) == 364 then
-                sampCloseCurrentDialogWithButton(0)
-                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
-                sampSendClickTextdraw(i)
-                setState(STATES.sellWindowState)
-                break
-            end
-        end
-    end
+    --         if math.modf(x) == 440 and math.modf(y) == 364 then
+    --             sampCloseCurrentDialogWithButton(0)
+    --             sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
+    --             sampSendClickTextdraw(i)
+    --             setState(STATES.sellWindowState)
+    --             break
+    --         end
+    --     end
+    -- end
 
 
     sellProc = false
@@ -1752,7 +1753,7 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.BeginGroup(imgui.SameLine())
                     if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then setState(STATES.sellWindowState) end
-                    imgui.Dummy(imgui.ImVec2(1,470))
+                    imgui.Dummy(imgui.ImVec2(1,480))
                     imgui.Dummy(imgui.ImVec2(15,0))
                     imgui.SameLine()
 
