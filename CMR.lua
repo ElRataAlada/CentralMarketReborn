@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.2.2')
+script_version('1.3.0')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -15,6 +15,7 @@ u8 = encoding.UTF8
 
 local json_file_BuyList = getWorkingDirectory()..'\\config\\Central Market\\buyitems.json'
 local json_file_mySellList = getWorkingDirectory()..'\\config\\Central Market\\sellitems.json'
+local json_file_AllSellItems = getWorkingDirectory()..'\\config\\Central Market\\allsellitems.json'
 local json_file_presets = getWorkingDirectory()..'\\config\\Central Market\\presets.json'
 local avg_prices = nil
 
@@ -22,12 +23,12 @@ local itemsBuy, itemsSell, myItemsSell, itemsSellPosition = {}, {}, {}, {}
 
 local removeSell = false
 
-local buyPresetIndex = imgui.ImInt(0)
 local byPresetNames = { }
 local buyPresetNameInput = imgui.ImBuffer(124)
 
 local settings = inicfg.load({
     main = {
+        buyPresetIndex = 0,
         commision = 4,
         delayParse = 50,
         delayVist = 200,
@@ -43,6 +44,7 @@ local settings = inicfg.load({
     }
 }, 'Central Market\\ARZCentral-settings')
 
+local buyPresetIndex = imgui.ImInt(settings.main.buyPresetIndex)
 local allWindow = imgui.ImBool(false)
 local last_list = nil
 local mainWindowState, buyWindowState, sellWindowState , settingWindowState, secondarybuyWindowState, secondaryWindowState, presetWindowState, delprod, infoWindowState, sellWindow2State = true, false, false, false, false, false, false, false, false, false
@@ -160,10 +162,6 @@ function parseAvgPrices()
     end
 end
 
-function load_preset_buy()
-    presets.buy[buyPresetIndex.v + 1].items = presets.buy[buyPresetIndex.v + 1].items
-end
-
 function create_preset_buy(name)
     local preset = { name = name, items = {} }
     table.insert(presets.buy, preset)
@@ -172,8 +170,9 @@ function create_preset_buy(name)
     jsonSave(json_file_presets, presets)
     
     buyPresetIndex.v = #presets.buy - 1
+    settings.main.buyPresetIndex = buyPresetIndex.v
 
-    load_preset_buy()
+    inicfg.save(settings, 'Central Market\\ARZCentral-settings')
 end
 
 
@@ -190,28 +189,15 @@ function main()
     if not doesFileExist(json_file_BuyList) then jsonSave(json_file_BuyList, {}) end
     if not doesFileExist(json_file_mySellList) then jsonSave(json_file_mySellList, {}) end
     if not doesFileExist(json_file_presets) then jsonSave(json_file_presets, { buy = { { name = "Default", items = { } } } }) end
-
+    if not doesFileExist(json_file_AllSellItems) then jsonSave(json_file_AllSellItems, {}) end
     
     if doesFileExist('moonloader/config/Central Market/ARZCentral-settings.ini') then inicfg.save(settings, 'Central Market\\ARZCentral-settings') end
-    
-    itemsBuy = jsonRead(json_file_BuyList)
-    myItemsSell = jsonRead(json_file_mySellList)
-    presets = jsonRead(json_file_presets)
-    
-    selectStyle.v = settings.main.stylemode
-
-    for i = 1, #presets.buy do
-        table.insert(byPresetNames, presets.buy[i].name)
-    end
-
-    load_preset_buy()
-    parseAvgPrices()
-    
     if not settings.main.imgui then sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Скрипт загружен. Команда активации: {'..settings.main.color..'}/cmr{FFFFFF}.', settings.main.colormsg) end
  
     sampRegisterChatCommand('cmr', function( )
         allWindow.v = not allWindow.v imgui.Process = allWindow.v
     end)
+    
     if settings.main.imgui then
         lua_thread.create(function()
             wait(200)
@@ -222,6 +208,20 @@ function main()
         inicfg.save(settings, 'Central Market\\ARZCentral-settings')
         end)
     end
+
+    itemsBuy = jsonRead(json_file_BuyList)
+    myItemsSell = jsonRead(json_file_mySellList)
+    allItemsSell = jsonRead(json_file_AllSellItems)
+    presets = jsonRead(json_file_presets)
+    
+    selectStyle.v = settings.main.stylemode
+
+    for i = 1, #presets.buy do
+        table.insert(byPresetNames, presets.buy[i].name)
+    end
+
+    parseAvgPrices()
+
     while true do
     wait(-1)
     if (wasKeyPressed(key.VK_ESC) and not sampIsChatInputActive() and not isSampfuncsConsoleActive() and not sampIsDialogActive()) and allWindow.v then
@@ -241,18 +241,13 @@ function sampev.onServerMessage(color, text)
        removeSell = false
     end
     
-    if removeSell and text:find("[Ошибка]") then
-        return false
-    end
-    
-    if sellProc and text:find("[Ошибка]") then
-        return false
-    end
-    
-    if buyProc and text:find("[Ошибка]") then
-        return false
-    end
+    local isError = text:match('%[Ошибка%]') ~= nil
 
+    if isError then
+        if buyProc or sellProc or removeSell then
+            return false
+        end
+    end
 end
 
 function getPageFromPosition(position)
@@ -486,20 +481,19 @@ function sellProcess()
 
     sampCloseCurrentDialogWithButton(0)
 
-    -- for i = 1, 4096 do
-    --     if sampTextdrawIsExists(i) then
-    --         x , y = sampTextdrawGetPos(i)
+    for i = 1, 4096 do
+        if sampTextdrawIsExists(i) then
+            x , y = sampTextdrawGetPos(i)
 
-    --         if math.modf(x) == 440 and math.modf(y) == 364 then
-    --             sampCloseCurrentDialogWithButton(0)
-    --             sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
-    --             sampSendClickTextdraw(i)
-    --             setState(STATES.sellWindowState)
-    --             break
-    --         end
-    --     end
-    -- end
-
+            if math.modf(x) == 440 and math.modf(y) == 364 then
+                sampCloseCurrentDialogWithButton(0)
+                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
+                sampSendClickTextdraw(i)
+                setState(STATES.sellWindowState)
+                break
+            end
+        end
+    end
 
     sellProc = false
 end
@@ -842,6 +836,10 @@ function parseInventoryItems(text, title)
 
                 if not isFound and not skip then
                      table.insert(itemsSell, {item, amount})
+
+                     if not check_table(item, allItemsSell) then
+                        table.insert(allItemsSell, {item, settings.main.classiccount, settings.main.classicprice, false})
+                     end
                 end
 
                 table.insert(itemsSellPosition, {item, amount, tonumber(position)})
@@ -872,6 +870,7 @@ function parseInventoryItems(text, title)
         myItemsSell = newMyItemsSell
 
         jsonSave(json_file_mySellList, myItemsSell)
+        jsonSave(json_file_AllSellItems, allItemsSell)
 
         fixDialogBug()
 
@@ -1022,15 +1021,20 @@ function imgui.OnDrawFrame()
                         table.remove(byPresetNames, buyPresetIndex.v + 1)
                         table.remove(presets.buy, buyPresetIndex.v + 1)
                         buyPresetIndex.v = 0
+
+                        settings.main.buyPresetIndex = buyPresetIndex.v
+
+                        inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+
                         jsonSave(json_file_presets, presets)
-                        load_preset_buy()
                     end
                 end
 
                 imgui.SameLine()
 
                 if imgui.Combo(u8'Пресет', buyPresetIndex, byPresetNames, #byPresetNames) then
-                    load_preset_buy()
+                    settings.main.buyPresetIndex = buyPresetIndex.v
+                    inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 end
 
                 imgui.SameLine()
@@ -1048,7 +1052,6 @@ function imgui.OnDrawFrame()
                     if buyPresetNameInput.v ~= '' then
                         create_preset_buy(buyPresetNameInput.v)
                         buyPresetNameInput.v = ''
-                        load_preset_buy()
                     end
                 end
 
@@ -1078,7 +1081,7 @@ function imgui.OnDrawFrame()
                         if imgui.Button(u8(itemsBuy[i][1])) then
 
                             if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
-                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], (settings.main.classiccount), (settings.main.classicprice), true})
+                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
                             jsonSave(json_file_presets, presets)
                         else
                             local name = itemsBuy[i][1]
@@ -1110,8 +1113,8 @@ function imgui.OnDrawFrame()
                                 if imgui.Button(u8(itemsBuy[i][1])) then
                                    
                                     if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
-                                    table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], 1, 10, true})
-                                    jsonSave(json_file_presets, presets)
+                                        table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
+                                        jsonSave(json_file_presets, presets)
                                     else
                                         local name = itemsBuy[i][1]
                                         table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
@@ -1148,8 +1151,6 @@ function imgui.OnDrawFrame()
                     if presets.buy[buyPresetIndex.v + 1].items ~= nil then
                     for i, _ in ipairs(presets.buy[buyPresetIndex.v + 1].items) do
                             if imgui.Button(u8(presets.buy[buyPresetIndex.v + 1].items[i][1])) then
-                               
-
                                 table.remove(presets.buy[buyPresetIndex.v + 1].items, i)
                                 jsonSave(json_file_presets, presets)
                                 break
@@ -1218,10 +1219,24 @@ function imgui.OnDrawFrame()
                             end
 
                             if imgui.Button(u8(itemsSell[i][1])) then
-                            
+                                
+                                local global_item = nil
+
+                                for j = 1, #allItemsSell do
+                                    if itemsSell[i][1] == allItemsSell[j][1] then
+                                        global_item = j
+                                        break
+                                    end
+                                end
 
                                 if not check_table(itemsSell[i][1], myItemsSell) then
-                                    table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], (settings.main.classicprice), true})
+
+                                    if global_item then
+                                        table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], allItemsSell[global_item][3], true})
+                                    else
+                                        table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], (settings.main.classicprice), true})
+                                    end
+
                                     jsonSave(json_file_mySellList, myItemsSell)
                                 else
                                     local name = itemsSell[i][1]
@@ -1255,27 +1270,42 @@ function imgui.OnDrawFrame()
                                     imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(0.25, 0.25, 0.25, 1))
                                     imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.3, 0.3, 0.3, 1))
                                 end
-
+    
                                 if imgui.Button(u8(itemsSell[i][1])) then
-                                  
+                                    
+                                    local global_item = nil
+    
+                                    for j = 1, #allItemsSell do
+                                        if itemsSell[i][1] == allItemsSell[j][1] then
+                                            global_item = j
+                                            break
+                                        end
+                                    end
+    
                                     if not check_table(itemsSell[i][1], myItemsSell) then
-                                    table.insert(myItemsSell, {itemsSell[i][1], 1, 10, true})
-                                    jsonSave(json_file_mySellList, myItemsSell)
-                                else
-                                    local name = itemsSell[i][1]
-                                    table.remove(myItemsSell, check_index(name, myItemsSell))
-                                    jsonSave(json_file_mySellList, myItemsSell)
+    
+                                        if global_item then
+                                            table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], allItemsSell[global_item][3], true})
+                                        else
+                                            table.insert(myItemsSell, {itemsSell[i][1], itemsSell[i][2], (settings.main.classicprice), true})
+                                        end
+    
+                                        jsonSave(json_file_mySellList, myItemsSell)
+                                    else
+                                        local name = itemsSell[i][1]
+                                        table.remove(myItemsSell, check_index(name, myItemsSell))
+                                        jsonSave(json_file_mySellList, myItemsSell)
+                                    end
+                                end
+    
+                                imgui.SameLine()
+    
+                                imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
+    
+                                if incart then
+                                    imgui.PopStyleColor(3)
                                 end
 
-                                imgui.SameLine()
-
-                                imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
-
-                            end
-                            if incart then
-                                imgui.PopStyleColor(3)
-                            end
-                                
                                 isFounded = true
                             end
                         end
@@ -1325,7 +1355,10 @@ function imgui.OnDrawFrame()
                 imgui.SameLine()
                 if imgui.Button(u8"Снять продажу", imgui.ImVec2(300, 40)) then
                     
-                    removeSell = true
+                    removeSell = not removeSell
+
+                    sampAddChatMessage(removeSell and '[ Central Market Reborn ]: {FFFFFF}Снятие с продажи' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с продажи', settings.main.colormsg)
+
                     press_alt()
                 end
             
@@ -1490,15 +1523,34 @@ function imgui.OnDrawFrame()
                         imgui.SameLine()
                         imgui.InputInt(('##price' .. i), bprice)
 
+                        local global_item = nil
+
+                        for j = 1, #itemsBuy do
+                            if itemsBuy[j][1] == presets.buy[buyPresetIndex.v + 1].items[i][1] then
+                                global_item = j
+                                break
+                            end
+                        end
+
                         
                         if presets.buy[buyPresetIndex.v + 1].items[i][2] ~= bcount.v then
                             presets.buy[buyPresetIndex.v + 1].items[i][2] = bcount.v
                             jsonSave(json_file_presets, presets)
+
+                            if global_item then
+                                itemsBuy[global_item][2] = bcount.v
+                                jsonSave(json_file_BuyList, itemsBuy)
+                            end
                         end
                         
                         if presets.buy[buyPresetIndex.v + 1].items[i][3] ~= bprice.v then
                             presets.buy[buyPresetIndex.v + 1].items[i][3] = bprice.v
                             jsonSave(json_file_presets, presets)
+                            
+                            if global_item then
+                                itemsBuy[global_item][3] = bprice.v
+                                jsonSave(json_file_BuyList, itemsBuy)
+                            end
                         end
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(20,0))
@@ -1578,6 +1630,8 @@ function imgui.OnDrawFrame()
                         idt = 1
                         buyProc, isEndBuy = not buyProc, false
 
+                        sampAddChatMessage(buyProc and '[ Central Market Reborn ]: {FFFFFF}Выставляю товары на скупку' or '[ Central Market Reborn ]: {FFFFFF}Прекращаю выставление товаров', settings.main.colormsg)
+
                         press_alt()
 
                         for i=1, #inputs do itemsBuy[inputs[i][3]][2] = inputs[i][1].v itemsBuy[inputs[i][3]][3] = inputs[i][2].v itemsBuy[inputs[i][3]][5] = inputs[i][5].v inicfg.save(itemsBuy, 'Central Market\\ARZCentral.ini') end 
@@ -1616,17 +1670,26 @@ function imgui.OnDrawFrame()
                 end
                     for i, _ in ipairs(myItemsSell) do
                         local pat1 = string.rlower(myItemsSell[i][1])
-                            local pat2 = string.rlower(u8:decode(findMyItem.v))                  
+                        local pat2 = string.rlower(u8:decode(findMyItem.v))                  
                             if pat1:find(pat2, 0, true) then
 
                         local global_item = nil
-
+                        
                         for ddf = 1, #itemsSell do
                             if itemsSell[ddf][1] == myItemsSell[i][1] then
                                 global_item = ddf
                                 break
                             end
                         end 
+
+                        local allItemsSellId = nil
+                        
+                        for ddf = 1, #allItemsSell do
+                            if allItemsSell[ddf][1] == myItemsSell[i][1] then
+                                allItemsSellId = ddf
+                                break
+                            end
+                        end
 
                         local total_amount = global_item and itemsSell[global_item][2] or 0
 
@@ -1664,6 +1727,10 @@ function imgui.OnDrawFrame()
                         local sellAll = imgui.ImBool(myItemsSell[i][4])
                         
                         local price = myItemsSell[i][3]
+
+                        if price == settings.main.classicprice then
+                            price = allItemsSellId and allItemsSell[allItemsSellId][3] or settings.main.classicprice
+                        end
 
                         local bprice = imgui.ImInt(price)
                         local bcount = imgui.ImInt(sellAll.v and total_amount or myItemsSell[i][2])
@@ -1706,6 +1773,9 @@ function imgui.OnDrawFrame()
                             if bprice.v < 10 then
                                 bprice.v = 10
                             end
+
+                            allItemsSell[allItemsSellId][3] = bprice.v
+                            jsonSave(json_file_AllSellItems, allItemsSell)
                         end
                         
                         imgui.SameLine()
@@ -1733,6 +1803,9 @@ function imgui.OnDrawFrame()
                         
                         if myItemsSell[i][3] ~= bprice.v then
                             myItemsSell[i][3] = bprice.v
+                            allItemsSell[allItemsSellId][3] = bprice.v
+
+                            jsonSave(json_file_AllSellItems, allItemsSell)
                             jsonSave(json_file_mySellList, myItemsSell)
                         end   
                         
