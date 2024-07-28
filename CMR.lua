@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.2.1')
+script_version('1.2.2')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -1767,7 +1767,23 @@ function imgui.OnDrawFrame()
                 imgui.EndGroup()
             local total = 0
             for i, n in pairs(myItemsSell) do 
-                total = total + (myItemsSell[i][2] * myItemsSell[i][3])
+                local global_item = nil
+
+                for ddf = 1, #itemsSell do
+                    if itemsSell[ddf][1] == myItemsSell[i][1] then
+                        global_item = ddf
+                        break
+                    end
+                end 
+
+                local total_amount = global_item and itemsSell[global_item][2] or 0
+
+                if myItemsSell[i][4] then
+                    total = total + (total_amount * myItemsSell[i][3])
+                else
+                    total = total + (myItemsSell[i][2] * myItemsSell[i][3])
+                end
+                
             end
             
             imgui.TextColoredRGB(greenText(comma_value(total)).." $ - "..yellowText(comma_value(math.modf((total*commision.v)/100))).." $ ( "..commision.v.."% )")
