@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.0')
+script_version('1.3.1')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -28,6 +28,7 @@ local buyPresetNameInput = imgui.ImBuffer(124)
 
 local settings = inicfg.load({
     main = {
+        useAutoupdate = nil,
         buyPresetIndex = 0,
         commision = 4,
         delayParse = 50,
@@ -44,12 +45,24 @@ local settings = inicfg.load({
     }
 }, 'Central Market\\ARZCentral-settings')
 
+local useAutoupdate = nil
+
+if settings.main.useAutoupdate == nil then
+    useAutoupdate = imgui.ImBool(true)
+else
+    useAutoupdate = imgui.ImBool(settings.main.useAutoupdate)
+end
+
 local buyPresetIndex = imgui.ImInt(settings.main.buyPresetIndex)
 local allWindow = imgui.ImBool(false)
 local last_list = nil
 local mainWindowState, buyWindowState, sellWindowState , settingWindowState, secondarybuyWindowState, secondaryWindowState, presetWindowState, delprod, infoWindowState, sellWindow2State = true, false, false, false, false, false, false, false, false, false
 local rbut, findBuf, findBufInt, parserBuf, delayInt, afilename, selectPresetMode, selectStyle, smooth, smoothInt1, smoothInt2, findMyItem, ccount, cprice = imgui.ImInt(1), imgui.ImBuffer(124), imgui.ImInt(0), imgui.ImInt(settings.main.delayParse), imgui.ImInt(settings.main.delayVist), imgui.ImBuffer(200), imgui.ImInt(1), imgui.ImInt(-1), imgui.ImBool(settings.main.smoothscroll), imgui.ImInt(settings.main.smoothhigh), imgui.ImInt(settings.main.smoothdelay), imgui.ImBuffer(124), imgui.ImInt(settings.main.classiccount), imgui.ImInt(settings.main.classicprice)
 local commision = imgui.ImInt(settings.main.commision)
+
+local autoupdate_page = true
+
+if settings.main.useAutoupdate ~= nil then autoupdate_page = false end
 
 STATES = {
     buyWindowState = "0",
@@ -79,6 +92,9 @@ end
 
 
 function autoupdate(json_url, prefix, url)
+
+    lua_thread.create(function()
+
     local dlstatus = require('moonloader').download_status
     local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
     if doesFileExist(json) then os.remove(json) end
@@ -143,7 +159,8 @@ function autoupdate(json_url, prefix, url)
       end
     )
     while update ~= false do wait(100) end
-  end
+  end)
+end
 
 function parseAvgPrices()
     avg_prices = jsonRead(getWorkingDirectory()..'\\config\\prices.json')
@@ -184,8 +201,10 @@ function main()
 	samp = getModuleHandle('samp.dll')
 	if samp <= 0x0 then return end
 
-    autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
-
+    if settings.main.useAutoupdate then
+        autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
+    end 
+    
     if not doesFileExist(json_file_BuyList) then jsonSave(json_file_BuyList, {}) end
     if not doesFileExist(json_file_mySellList) then jsonSave(json_file_mySellList, {}) end
     if not doesFileExist(json_file_presets) then jsonSave(json_file_presets, { buy = { { name = "Default", items = { } } } }) end
@@ -512,6 +531,10 @@ end
 
 function greenText(text)
     return '{109f10}'..text..'{e8e8e8}'
+end
+
+function redText(text)
+    return '{ff0000}'..text..'{e8e8e8}'    
 end
 
 function removeSellProcess()
@@ -1001,16 +1024,86 @@ function menu(imgui)
     imgui.EndMenuBar()
 end
 
+local fontsize = nil
+function imgui.BeforeDrawFrame()
+    if fontsize == nil then
+        fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+    end
+end
+
 function imgui.OnDrawFrame()
     
     local cx, cy = select(1, getScreenResolution()), select(2, getScreenResolution())
     local sw, sh = getScreenResolution()
-	if allWindow.v then
-        imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
-        imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
+	if allWindow.v then        
+        if autoupdate_page then
+            imgui.SetNextWindowPos(imgui.ImVec2(cx/2, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+            imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
+            imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
+            imgui.BeginChild('#sfdgsdf', imgui.ImVec2(1200, 400))
+            imgui.PushFont(fontsize)
+            
+            function imgui.CText(text)
+                local calc = imgui.CalcTextSize(text)
+                imgui.SetCursorPosX((imgui.GetWindowWidth() - calc.x) / 2)
+                imgui.TextColoredRGB(text)
+            end
 
+            imgui.Dummy(imgui.ImVec2(0, 5))
+            imgui.CText(redText('Авто-обновление скрипта!'))
+            imgui.Dummy(imgui.ImVec2(0, 5))
+            
+            imgui.PopFont()
+            
+            function imgui.BeforeDrawFrame()
+                if fontsize == nil then
+                    fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 10.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+                end
+            end
 
+            function imgui.CText(text)
+                local calc = imgui.CalcTextSize(text)
+                imgui.SetCursorPosX((imgui.GetWindowWidth() - calc.x) / 2)
+                imgui.Text(text)
+            end
+            
+            imgui.PushFont(fontsize)
+            imgui.Separator()
+            imgui.Dummy(imgui.ImVec2(0, 25))
+            imgui.CText(u8'Авто-обновление скрипта - это функция, которая позволяет скачивать новые версии скрипта автоматически')
+            imgui.CText(u8'Без авто-обновления вам придется самостоятельно скачивать его на сайте')
+            
+            imgui.Dummy(imgui.ImVec2(0, 25))
+            
+            imgui.CText(u8'Выберите вариант и нажмите "Сохранить"')
+            
+            imgui.CText(u8'Выбор можно будет изменить во вкладке "Настройки"')
+            
+            imgui.Dummy(imgui.ImVec2(0, 50))
+
+            imgui.Dummy(imgui.ImVec2(450, 50))
+            imgui.SameLine()
+            imgui.Checkbox(u8'Авто-обновление скрипта', useAutoupdate)
+            
+            imgui.Dummy(imgui.ImVec2(50, 0))
+            imgui.SameLine()
+            if imgui.Button(u8'Сохранить', imgui.ImVec2(1100, 50)) then
+                settings.main.useAutoupdate = useAutoupdate.v
+                inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+                autoupdate_page = false
+
+                if settings.main.useAutoupdate then
+                    autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
+                end
+            end
+
+            imgui.PopFont()
+
+            imgui.EndChild()
+        else
+            imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+            imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
+            imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
 
 
         if mainWindowState then
@@ -1872,7 +1965,20 @@ function imgui.OnDrawFrame()
 
             local margin_size = 20
 
+            imgui.Dummy(imgui.ImVec2(0,10))
+
+            if imgui.Checkbox(u8"Авто-обновление", useAutoupdate) then
+                settings.main.useAutoupdate = useAutoupdate.v
+                inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+
+                if settings.main.useAutoupdate then
+                    autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
+                end
+            end
+
             imgui.PushItemWidth(400)
+
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
             
             imgui.Text(u8'Задержка для диалогов')
             if imgui.SliderInt('##delay2', parserBuf, 50, 200) then settings.main.delayParse = parserBuf.v inicfg.save(settings, 'Central Market\\ARZCentral-settings') end 
@@ -1925,6 +2031,8 @@ function imgui.OnDrawFrame()
                     inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 end
             end
+            imgui.Dummy(imgui.ImVec2(0,10))
+
             imgui.PopItemWidth()
         end
 
@@ -1969,6 +2077,7 @@ function imgui.OnDrawFrame()
             imgui.PopFont()
             imgui.Separator()
         end
+    end 
 
         imgui.End()
     end
