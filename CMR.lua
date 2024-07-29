@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.4')
+script_version('1.3.5')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -160,7 +160,6 @@ function autoupdate(json_url, prefix, url)
     )
     while update ~= false do wait(100) end
 
-    reloadscript()
   end)
 end
 
