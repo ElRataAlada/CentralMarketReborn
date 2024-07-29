@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.5')
+script_version('1.3.6')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -477,12 +477,24 @@ function sellProcess()
                                     toSell = 0
                                     
                                 elseif amount >= toSell then
-                                    sampSendDialogResponse(26540, 1, nil, toSell .. ", " .. price)
-                                    toSell = 0
-                                    
+
+                                    if toSell == 1 then
+                                        sampSendDialogResponse(26540, 1, nil, price)
+                                        toSell = 0
+                                    else
+                                        sampSendDialogResponse(26540, 1, nil, toSell .. ", " .. price)
+                                        toSell = toSell - amount
+                                    end
+
                                 elseif amount < toSell then
-                                    sampSendDialogResponse(26540, 1, nil, amount .. ", " .. price)
-                                    toSell = toSell - amount
+
+                                    if amount == 1 then
+                                        sampSendDialogResponse(26540, 1, nil, price)
+                                        toSell = toSell - amount
+                                    else
+                                        sampSendDialogResponse(26540, 1, nil, amount .. ", " .. price)
+                                        toSell = toSell - amount
+                                    end
                                 end
                             end
 
@@ -506,6 +518,7 @@ function sellProcess()
 
             if math.modf(x) == 440 and math.modf(y) == 364 then
                 sampCloseCurrentDialogWithButton(0)
+                wait(delayInt.v)
                 sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
                 sampSendClickTextdraw(i)
                 setState(STATES.sellWindowState)
@@ -841,6 +854,17 @@ function parseInventoryItems(text, title)
             if item ~= "[слот] Название" and item ~= nil and not n:find("Инвентарь") then
                 local isFound = false
                 
+                item_toch = item:match("(+%d+)")
+                
+                if item_toch then
+                    start = item:find(item_toch)
+
+                    if start then
+                        item = item:sub(1, start-2 )
+                    end
+                end
+
+                
                 for g, f in pairs(itemsSell) do
                     if item == itemsSell[g][1] then
                         itemsSell[g][2] = itemsSell[g][2] + amount
@@ -858,11 +882,16 @@ function parseInventoryItems(text, title)
                 end
 
                 if not isFound and not skip then
-                     table.insert(itemsSell, {item, amount})
 
-                     if not check_table(item, allItemsSell) then
+                    if item_toch then
+                        item = item .."("..item_toch..")"
+                    end
+
+                    table.insert(itemsSell, {item, amount})
+
+                    if not check_table(item, allItemsSell) then
                         table.insert(allItemsSell, {item, settings.main.classiccount, settings.main.classicprice, false})
-                     end
+                    end
                 end
 
                 table.insert(itemsSellPosition, {item, amount, tonumber(position)})
