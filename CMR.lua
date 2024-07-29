@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.3')
+script_version('1.3.4')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -159,6 +159,8 @@ function autoupdate(json_url, prefix, url)
       end
     )
     while update ~= false do wait(100) end
+
+    reloadscript()
   end)
 end
 
@@ -220,7 +222,6 @@ function main()
     if settings.main.imgui then
         lua_thread.create(function()
             wait(200)
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Скрипт перезагружен.', settings.main.colormsg)
         allWindow.v = true
         imgui.Process = allWindow.v
         settings.main.imgui = false
@@ -1095,9 +1096,9 @@ function imgui.OnDrawFrame()
 
                 if settings.main.useAutoupdate then
                     autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
+                else
+                    reloadscript()
                 end
-
-                reloadscript()
             end
 
             imgui.PopFont()
