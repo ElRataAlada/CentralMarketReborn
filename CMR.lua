@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.2')
+script_version('1.3.3')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -1001,18 +1001,6 @@ local fa = require 'fAwesome5'
 
 local fa_font = nil
 local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
-function imgui.BeforeDrawFrame()
-    if fa_font == nil then
-        local font_config = imgui.ImFontConfig()
-        font_config.MergeMode = true
-
-        fa_font = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 13.0, font_config, fa_glyph_ranges)
-    end
-    if fontsize == nil then
-        fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 20.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
-        logosize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
-    end
-end
 
 function menu(imgui)
     imgui.BeginMenuBar()
@@ -1024,12 +1012,28 @@ function menu(imgui)
     imgui.EndMenuBar()
 end
 
-local fontsize = nil
-function imgui.BeforeDrawFrame()
-    if fontsize == nil then
-        fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+if autoupdate_page then
+    fontsize = nil
+    
+    function imgui.BeforeDrawFrame()
+        if fontsize == nil then
+            fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+        end
     end
-end
+else
+    function imgui.BeforeDrawFrame()
+        if fa_font == nil then
+            local font_config = imgui.ImFontConfig()
+            font_config.MergeMode = true
+    
+            fa_font = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 13.0, font_config, fa_glyph_ranges)
+        end
+        if fontsize == nil then
+            fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 20.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+            logosize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+        end
+    end
+end    
 
 function imgui.OnDrawFrame()
     
@@ -1054,12 +1058,6 @@ function imgui.OnDrawFrame()
             imgui.Dummy(imgui.ImVec2(0, 5))
             
             imgui.PopFont()
-            
-            function imgui.BeforeDrawFrame()
-                if fontsize == nil then
-                    fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 10.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
-                end
-            end
 
             function imgui.CText(text)
                 local calc = imgui.CalcTextSize(text)
@@ -1091,35 +1089,21 @@ function imgui.OnDrawFrame()
             if imgui.Button(u8'Сохранить', imgui.ImVec2(1100, 50)) then
                 settings.main.useAutoupdate = useAutoupdate.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+                fontsize = nil
+                fa_font = nil
                 autoupdate_page = false
 
                 if settings.main.useAutoupdate then
                     autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
                 end
+
+                reloadscript()
             end
 
             imgui.PopFont()
 
             imgui.EndChild()
         else
-            fontsize = nil
-            fa_font = nil
-            fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
-
-            function imgui.BeforeDrawFrame()
-
-                if fa_font == nil then
-                    local font_config = imgui.ImFontConfig()
-                    font_config.MergeMode = true
-            
-                    fa_font = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 13.0, font_config, fa_glyph_ranges)
-                end
-                if fontsize == nil then
-                    fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 20.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
-                    logosize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
-                end
-            end
-
             imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
             imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
             imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
@@ -1270,9 +1254,9 @@ function imgui.OnDrawFrame()
                 imgui.BeginChild("##234", imgui.ImVec2(250, 500))
                 if imgui.Button(u8'Сканер', imgui.ImVec2(120, 20)) then
                     
+                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Проверка товаров.', settings.main.colormsg)
                         check, checkmode = true, 1
                         press_alt()
-                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Проверка товаров.', settings.main.colormsg)
 
                 end
                 if imgui.Button(u8"Очистить", imgui.ImVec2(120, 20), imgui.SameLine()) then presets.buy[buyPresetIndex.v + 1].items = {} jsonSave(json_file_presets, presets) end
@@ -1304,17 +1288,17 @@ function imgui.OnDrawFrame()
                 end
                 imgui.SameLine()
                 if imgui.Button(u8'Снять Скупку', imgui.ImVec2(250, 40)) then
+                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки' or '[ Central Market Reborn ]: {FFFFFF}Cнятия с скупки. Подождите', settings.main.colormsg)
                     delprod, delprodc = not delprod, 4
                     press_alt()
-                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Cнятия с скупки. Подождите' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg)
                 end
             else    
                 imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже! \nЗатем нажмите в лавке 'Выставить товар на покупку'!")
                 if imgui.Button(u8'Сканер', imgui.ImVec2(330, 25)) then 
                     
-                        check, checkmode = true, 1
-                        press_alt()
-                        sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
+                    check, checkmode = true, 1
+                    press_alt()
+                    sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
 
                 end
             end
@@ -1490,10 +1474,8 @@ function imgui.OnDrawFrame()
                 imgui.SameLine()
                 if imgui.Button(u8"Снять продажу", imgui.ImVec2(300, 40)) then
                     
+                    sampAddChatMessage(removeSell and '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с продажи' or '[ Central Market Reborn ]: {FFFFFF}Снятие с продажи', settings.main.colormsg)
                     removeSell = not removeSell
-
-                    sampAddChatMessage(removeSell and '[ Central Market Reborn ]: {FFFFFF}Снятие с продажи' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с продажи', settings.main.colormsg)
-
                     press_alt()
                 end
             
@@ -1763,9 +1745,9 @@ function imgui.OnDrawFrame()
                     if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then secondaryWindowState = false mainWindowState = true end
                     if imgui.Button(u8"Начать скупку", imgui.ImVec2(240, 75)) then 
                         idt = 1
+                        sampAddChatMessage(buyProc and '[ Central Market Reborn ]: {FFFFFF}Прекращаю выставление товаров' or '[ Central Market Reborn ]: {FFFFFF}Выставляю товары на скупку', settings.main.colormsg)
                         buyProc, isEndBuy = not buyProc, false
 
-                        sampAddChatMessage(buyProc and '[ Central Market Reborn ]: {FFFFFF}Выставляю товары на скупку' or '[ Central Market Reborn ]: {FFFFFF}Прекращаю выставление товаров', settings.main.colormsg)
 
                         press_alt()
 
