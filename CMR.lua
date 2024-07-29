@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.1')
+script_version('1.3.2')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -915,7 +915,7 @@ function parserPage(text, title) -- переделал функу Devilov'a
                         isFound = true
                     end
                 end
-                if not isFound then table.insert(itemsBuy, {item}) end
+                if not isFound then table.insert(itemsBuy, {item, settings.main.classiccount, settings.main.classicprice}) end
             end
 		if n:find(">>>") and (cur ~= max) then wait(parserBuf.v) sampSendDialogResponse(3050, 1, i-1) isNext = true end -- следующая страничка
         i = i + 1
@@ -1087,6 +1087,7 @@ function imgui.OnDrawFrame()
             
             imgui.Dummy(imgui.ImVec2(50, 0))
             imgui.SameLine()
+
             if imgui.Button(u8'Сохранить', imgui.ImVec2(1100, 50)) then
                 settings.main.useAutoupdate = useAutoupdate.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
@@ -1101,6 +1102,24 @@ function imgui.OnDrawFrame()
 
             imgui.EndChild()
         else
+            fontsize = nil
+            fa_font = nil
+            fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
+
+            function imgui.BeforeDrawFrame()
+
+                if fa_font == nil then
+                    local font_config = imgui.ImFontConfig()
+                    font_config.MergeMode = true
+            
+                    fa_font = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 13.0, font_config, fa_glyph_ranges)
+                end
+                if fontsize == nil then
+                    fontsize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 20.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+                    logosize = imgui.GetIO().Fonts:AddFontFromFileTTF(getFolderPath(0x14) .. '\\trebucbd.ttf', 25.0, nil, imgui.GetIO().Fonts:GetGlyphRangesCyrillic())
+                end
+            end
+
             imgui.SetNextWindowPos(imgui.ImVec2(cx/1.7, cy / 1.60), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
             imgui.SetNextWindowSize(imgui.ImVec2(sw / 1.6, sh / 1.5), imgui.Cond.FirstUseEver)
             imgui.Begin(u8'Central Market Reborn', allWindow, 64+imgui.WindowFlags.MenuBar+imgui.WindowFlags.NoCollapse)
@@ -1157,44 +1176,57 @@ function imgui.OnDrawFrame()
                 else
                     imgui.BeginChild("##1", imgui.ImVec2(500, 470), false)
                 end
+                
                 if findBuf.v == '' then
-                local clipper = imgui.ImGuiListClipper(#itemsBuy)
+                    local clipper = imgui.ImGuiListClipper(#itemsBuy)
                     while clipper:Step() do            
-                for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
-                    local f = itemsBuy[i]
-                        
-                    local incart = check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items)
+                        for i = clipper.DisplayStart + 1, clipper.DisplayEnd do
+                            local f = itemsBuy[i]
+                                
+                            local incart = check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items)
 
-                        if incart then                     
-                            imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
-                            imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(0.25, 0.25, 0.25, 1))
-                            imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.3, 0.3, 0.3, 1))
-                        end
+                                if incart then                     
+                                    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.2, 0.2, 1))
+                                    imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(0.25, 0.25, 0.25, 1))
+                                    imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.3, 0.3, 0.3, 1))
+                                end
 
-                        if imgui.Button(u8(itemsBuy[i][1])) then
+                                if imgui.Button(u8(itemsBuy[i][1])) then
+                                    if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
+                                    
+                                        if itemsBuy[i][2] and itemsBuy[i][3] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
+                                        elseif itemsBuy[i][2] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], settings.main.classiccount, true})
+                                        elseif itemsBuy[i][3] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], settings.main.classicprice, itemsBuy[i][3], true})
+                                        else
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], settings.main.classicprice, settings.main.classiccount, true})
+                                        end
 
-                            if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
-                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
-                            jsonSave(json_file_presets, presets)
-                        else
-                            local name = itemsBuy[i][1]
-                            table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
-                            jsonSave(json_file_presets, presets)
-                        end
-                        end
+                                        jsonSave(json_file_presets, presets)
+                                    else
+                                        local name = itemsBuy[i][1]
+                                        table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
+                                        jsonSave(json_file_presets, presets)
+                                    end
+                                end
 
-                        if incart then
-                            imgui.PopStyleColor(3)
-                        end
+                                if incart then
+                                    imgui.PopStyleColor(3)
+                                end
+                            end
                     end
                 end
-            end
+                
+
                 for i, _ in ipairs(itemsBuy) do
                     if findBuf.v ~= '' then
                         local isFounded = false
                             local pat1 = string.rlower(itemsBuy[i][1])
                             local pat2 = string.rlower(u8:decode(findBuf.v))                  
                             if pat1:find(pat2, 0, true) then
+                                
                                 local incart = check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items)
 
                                 if incart then                     
@@ -1204,20 +1236,30 @@ function imgui.OnDrawFrame()
                                 end
 
                                 if imgui.Button(u8(itemsBuy[i][1])) then
-                                   
                                     if not check_table(itemsBuy[i][1], presets.buy[buyPresetIndex.v + 1].items) then
-                                        table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
+                                    
+                                        if itemsBuy[i][2] and itemsBuy[i][3] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], itemsBuy[i][3], true})
+                                        elseif itemsBuy[i][2] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], itemsBuy[i][2], settings.main.classiccount, true})
+                                        elseif itemsBuy[i][3] then
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], settings.main.classicprice, itemsBuy[i][3], true})
+                                        else
+                                            table.insert(presets.buy[buyPresetIndex.v + 1].items, {itemsBuy[i][1], settings.main.classicprice, settings.main.classiccount, true})
+                                        end
+
                                         jsonSave(json_file_presets, presets)
                                     else
                                         local name = itemsBuy[i][1]
                                         table.remove(presets.buy[buyPresetIndex.v + 1].items, check_index(name, presets.buy[buyPresetIndex.v + 1].items))
                                         jsonSave(json_file_presets, presets)
+                                    end
                                 end
 
-                            end
-                            if incart then
-                                imgui.PopStyleColor(3)
-                            end
+                                if incart then
+                                    imgui.PopStyleColor(3)
+                                end
+
                                 isFounded = true
                             end
                         end
