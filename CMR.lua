@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.6')
+script_version('1.3.7')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -908,12 +908,12 @@ function parseInventoryItems(text, title)
 
         local newMyItemsSell = {}
 
-        for g, f in pairs(itemsSell) do
-            name = itemsSell[g][1]
+        for g = 1, #myItemsSell do
+            name = myItemsSell[g][1]
 
-            for i, _ in ipairs(myItemsSell) do
-                if name == myItemsSell[i][1] then
-                    table.insert(newMyItemsSell, {name, myItemsSell[i][2], myItemsSell[i][3], myItemsSell[i][4]})
+            for k = 1, #itemsSell do
+                if name == itemsSell[k][1] then
+                    table.insert(newMyItemsSell, {name, myItemsSell[g][2], myItemsSell[g][3], myItemsSell[g][4]})
                     break
                 end
             end
