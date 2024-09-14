@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.3.7')
+script_version('1.4.1')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -28,6 +28,7 @@ local buyPresetNameInput = imgui.ImBuffer(124)
 
 local settings = inicfg.load({
     main = {
+        avgPriceMode = 1,
         useAutoupdate = nil,
         buyPresetIndex = 0,
         commision = 4,
@@ -53,6 +54,7 @@ else
     useAutoupdate = imgui.ImBool(settings.main.useAutoupdate)
 end
 
+local avgPriceMode = imgui.ImInt(settings.main.avgPriceMode)
 local buyPresetIndex = imgui.ImInt(settings.main.buyPresetIndex)
 local allWindow = imgui.ImBool(false)
 local last_list = nil
@@ -74,22 +76,24 @@ STATES = {
     secondaryWindowState = "6",
     presetWindowState = "7",
     delprod = "8",
-    sellWindow2State = "9"
+    sellWindow2State = "9",
+    avgPriceWindowState = "10"
 }
 
 function setState(STATE)
-    if STATE == STATES.mainWindowState then  buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false mainWindowState = true end
-    if STATE == STATES.buyWindowState then  mainWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false buyWindowState = true end
-    if STATE == STATES.sellWindowState then itemsSell = {}  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false sellWindowState = true end
-    if STATE == STATES.sellWindow2State then  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindowState = false sellWindow2State = true end
-    if STATE == STATES.infoWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false  sellWindow2State = false infoWindowState = true end
-    if STATE == STATES.settingWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false settingWindowState = true end
-    if STATE == STATES.secondarybuyWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false secondarybuyWindowState = true end
-    if STATE == STATES.secondaryWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false secondaryWindowState = true end
-    if STATE == STATES.presetWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false delprod = false infoWindowState = false  sellWindow2State = false presetWindowState = true end
-    if STATE == STATES.delprod then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false infoWindowState = false  sellWindow2State = false delprod = true end
+    if STATE == STATES.mainWindowState then  buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false mainWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.buyWindowState then  mainWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false buyWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.sellWindowState then itemsSell = {}  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindow2State = false sellWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.sellWindow2State then  mainWindowState = false buyWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false sellWindowState = false sellWindow2State = true avgPriceWindowState = false end
+    if STATE == STATES.infoWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false  sellWindow2State = false infoWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.settingWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false settingWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.secondarybuyWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondaryWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false secondarybuyWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.secondaryWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false presetWindowState = false delprod = false infoWindowState = false  sellWindow2State = false secondaryWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.presetWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false delprod = false infoWindowState = false  sellWindow2State = false presetWindowState = true avgPriceWindowState = false end
+    if STATE == STATES.delprod then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false infoWindowState = false  sellWindow2State = false delprod = true avgPriceWindowState = false end
+    if STATE == STATES.avgPriceWindowState then  mainWindowState = false buyWindowState = false sellWindowState = false settingWindowState = false secondarybuyWindowState = false secondaryWindowState = false presetWindowState = false infoWindowState = false  sellWindow2State = false delprod = false avgPriceWindowState = true end
+    
 end
-
 
 function autoupdate(json_url, prefix, url)
 
@@ -163,7 +167,7 @@ function autoupdate(json_url, prefix, url)
   end)
 end
 
-function parseAvgPrices()
+function parseAvgPricesCR()
     avg_prices = jsonRead(getWorkingDirectory()..'\\config\\prices.json')
 
     if avg_prices == nil then
@@ -175,9 +179,63 @@ function parseAvgPrices()
             sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Загрузите цены на центральном рынке или скачайте файл prices.json', settings.main.colormsg)
             return
         end
+
+        loc = {}
+
+        for i = 1, #itemsBuy do
+            name = itemsBuy[i][1]
+
+            if avg_prices.list[name] == nil then
+                loc[name] = { sa = {sell = {price = 0, total = 0}, buy = {price = 0, total = 0}}, vc = {sell = {price = 0, total = 0}, buy = {price = 0, total = 0}} }
+            else
+                loc[name] = { sa = {sell = {price = avg_prices.list[name].sa.price, total = 0}, buy = {price = avg_prices.list[name].sa.price, total = 0} }, vc = {sell = {price = avg_prices.list[name].vc.price, total = 0}, buy = {price = avg_prices.list[name].vc.price, total = 0}} }
+            end
+        end
         
+        avg_prices = loc
+
         sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Средние цены успешно загружены.', settings.main.colormsg)
     end
+end
+
+function parseAvgPricesCMS()
+
+    avg_prices = jsonRead(getWorkingDirectory()..'\\config\\centralblyabyMrRazrab.json')
+
+    loc = {}
+
+    if avg_prices == nil then
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Файл с средними ценами не найден. Установите Central Market Scanner', settings.main.colormsg)
+    else
+        for i = 1, #avg_prices do
+            name = avg_prices[i].name
+            ttype = avg_prices[i].type
+            price = avg_prices[i].price
+
+
+            if loc[name] == nil then
+                if ttype == "sale" then
+                    loc[name] = { sa = {sell = {price = price, total = 1}, buy = {price = 0, total = 0} }, vc = {sell = {price = price, total = 1}, buy = {price = 0, total = 0} }}
+                else
+                    loc[name] = { sa = {sell = {price = 0, total = 0}, buy = {price = price, total = 1} }, vc = {sell = {price = 0, total = 0}, buy = {price = price, total = 1} }}
+                end
+            else
+                if ttype == "sale" then
+                    loc[name].sa.sell.total = loc[name].sa.sell.total + 1
+                    loc[name].sa.sell.price = math.modf((loc[name].sa.sell.price + price) / loc[name].sa.sell.total)
+                else
+                    loc[name].sa.buy.total = loc[name].sa.buy.total + 1
+                    loc[name].sa.buy.price = math.modf((loc[name].sa.buy.price + price) / loc[name].sa.buy.total)
+                end
+            end
+
+        end
+
+        avg_prices = loc
+
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Средние цены успешно загружены.', settings.main.colormsg)
+    end
+
 end
 
 function create_preset_buy(name)
@@ -234,12 +292,17 @@ function main()
     presets = jsonRead(json_file_presets)
     
     selectStyle.v = settings.main.stylemode
+    avgPriceMode.v = settings.main.avgPriceMode - 1
 
     for i = 1, #presets.buy do
         table.insert(byPresetNames, presets.buy[i].name)
     end
 
-    parseAvgPrices()
+    if settings.main.avgPriceMode == 1 then
+        parseAvgPricesCR()
+    else
+        parseAvgPricesCMS()
+    end
 
     while true do
     wait(-1)
@@ -382,13 +445,13 @@ function sellProcess()
             {408, 351},
             {418, 351}
         }
-
+        
         inventoryPages = {}
-
+        
         for i = 0 , 4096 do
             if sampTextdrawIsExists(i) then
                 x , y = sampTextdrawGetPos(i)
-
+                
                 for pos = 1, #inventoryPagesPos do
                     if math.modf(x) == inventoryPagesPos[pos][1] and math.modf(y) == inventoryPagesPos[pos][2] then
                         table.insert(inventoryPages, i)
@@ -397,7 +460,8 @@ function sellProcess()
                 end
             end
         end
-
+        
+        wait(delayInt.v*2)
         local prevPage = 1
 
         for name = 1, #myItemsSell do
@@ -462,7 +526,7 @@ function sellProcess()
                             wait(delayInt.v)
 
 
-                            if sampGetCurrentDialogId() ~= 26540 then
+                            if sampGetCurrentDialogId() ~= 26539 then
                                 fixDialogBug()
                                 wait(delayInt.v)
                                 sampSendClickTextdraw(textDrawsPositions[td_position][1])
@@ -471,28 +535,28 @@ function sellProcess()
 
                             td_position = td_position + 1
 
-                            if sampGetCurrentDialogId() == 26540 then
+                            if sampGetCurrentDialogId() == 26539 then
                                 if total == 1 and toSell == 1 then
-                                    sampSendDialogResponse(26540, 1, nil, price)
+                                    sampSendDialogResponse(26539, 1, nil, price)
                                     toSell = 0
                                     
                                 elseif amount >= toSell then
 
                                     if toSell == 1 then
-                                        sampSendDialogResponse(26540, 1, nil, price)
+                                        sampSendDialogResponse(26539, 1, nil, price)
                                         toSell = 0
                                     else
-                                        sampSendDialogResponse(26540, 1, nil, toSell .. ", " .. price)
+                                        sampSendDialogResponse(26539, 1, nil, toSell .. ", " .. price)
                                         toSell = toSell - amount
                                     end
 
                                 elseif amount < toSell then
 
                                     if amount == 1 then
-                                        sampSendDialogResponse(26540, 1, nil, price)
+                                        sampSendDialogResponse(26539, 1, nil, price)
                                         toSell = toSell - amount
                                     else
-                                        sampSendDialogResponse(26540, 1, nil, amount .. ", " .. price)
+                                        sampSendDialogResponse(26539, 1, nil, amount .. ", " .. price)
                                         toSell = toSell - amount
                                     end
                                 end
@@ -584,8 +648,8 @@ function removeSellProcess()
                         sampSendClickTextdraw(textdraws[t][1])
                         wait(delayInt.v)
                         
-                        if sampGetCurrentDialogId() == 26541 then
-                            sampSendDialogResponse(26541, 1)
+                        if sampGetCurrentDialogId() == 26540 then
+                            sampSendDialogResponse(26540, 1)
                             wait(delayInt.v)
                         end
                         
@@ -1037,7 +1101,6 @@ function menu(imgui)
     if imgui.MenuItem(u8'Продажа') then setState(STATES.sellWindowState) end
     if imgui.MenuItem(u8'Настройки') then setState(STATES.settingWindowState) end
     if imgui.MenuItem(u8'Инфо') then setState(STATES.infoWindowState) end
-    if imgui.MenuItem(u8'Перезагрузить скрипт') then reloadscript() end
     imgui.EndMenuBar()
 end
 
@@ -1642,18 +1705,22 @@ function imgui.OnDrawFrame()
                         local is_in_list = false
 
                         if avg_prices ~= nil then
-                            if avg_prices.list[presets.buy[buyPresetIndex.v + 1].items[i][1]] ~= nil then
+                            if avg_prices[presets.buy[buyPresetIndex.v + 1].items[i][1]] ~= nil then
                                 is_in_list = true
                             end
                         end
 
                         if avg_prices ~= nil and is_in_list then
-                            local price = avg_prices.list[presets.buy[buyPresetIndex.v + 1].items[i][1]].sa.price
+                            local price = avg_prices[presets.buy[buyPresetIndex.v + 1].items[i][1]].sa.buy.price
 
                             if type(price) == "table" then
                                 text = " | Средняя цена: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
                             else
                                 text = " | Средняя цена: " .. comma_value(price).." $"
+                            end
+
+                            if price == 0 then
+                                text = ""
                             end
                         end
 
@@ -1844,13 +1911,13 @@ function imgui.OnDrawFrame()
                         local is_in_list = false
 
                         if avg_prices ~= nil then
-                            if avg_prices.list[myItemsSell[i][1]] ~= nil then
+                            if avg_prices[myItemsSell[i][1]] ~= nil then
                                 is_in_list = true
                             end
                         end
 
                         if avg_prices ~= nil and is_in_list then
-                            local price = avg_prices.list[myItemsSell[i][1]].sa.price
+                            local price = avg_prices[myItemsSell[i][1]].sa.sell.price
 
                             if type(price) == "table" then
                                 text = " | Средняя цена: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
@@ -1858,6 +1925,9 @@ function imgui.OnDrawFrame()
                                 text = " | Средняя цена: " .. comma_value(price).." $"
                             end
 
+                            if price == 0 then
+                                text = ""
+                            end
                         end
 
                         color = "{178f2b}"
@@ -2028,6 +2098,20 @@ function imgui.OnDrawFrame()
                     autoupdate("https://github.com/ElRataAlada/CentralMarketReborn/raw/main/version.json", '[ Central Market Reborn ]: ', "https://github.com/ElRataAlada/CentralMarketReborn")
                 end
             end
+            
+            imgui.Dummy(imgui.ImVec2(0,margin_size))
+
+            if imgui.Combo(u8("Средние цены"), avgPriceMode, {'cr.lua', 'Central Market Scaner'}, 2) then
+                settings.main.avgPriceMode = avgPriceMode.v + 1
+
+                if settings.main.avgPriceMode == 1 then
+                    parseAvgPricesCR()
+                elseif settings.main.avgPriceMode == 2 then
+                    parseAvgPricesCMS()
+                end
+
+                inicfg.save(settings, 'Central Market\\ARZCentral-settings')
+            end
 
             imgui.PushItemWidth(400)
 
@@ -2048,6 +2132,7 @@ function imgui.OnDrawFrame()
                 settings.main.style = selectStyle.v + 1
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
+
             imgui.Dummy(imgui.ImVec2(0,margin_size))
 
             if imgui.InputInt(u8'Коммисия на продажу %', commision) then
@@ -2090,7 +2175,11 @@ function imgui.OnDrawFrame()
         end
 
 
+        if avgPriceWindowState then
+            menu(imgui)
 
+            
+        end
 
 
 
