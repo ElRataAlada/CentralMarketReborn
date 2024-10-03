@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.4.1')
+script_version('1.4.2')
 
 script_authors('Revinci')
 script_description('Автоматическое Выставление товаров на скупку и продажу')
@@ -448,7 +448,7 @@ function sellProcess()
         
         inventoryPages = {}
         
-        for i = 0 , 4096 do
+        for i = 0, 4096 do
             if sampTextdrawIsExists(i) then
                 x , y = sampTextdrawGetPos(i)
                 
@@ -525,41 +525,42 @@ function sellProcess()
                             sampSendClickTextdraw(textDrawsPositions[td_position][1])
                             wait(delayInt.v)
 
-
-                            if sampGetCurrentDialogId() ~= 26539 then
+                            if sampGetCurrentDialogId() ~= 26540 then
                                 fixDialogBug()
-                                wait(delayInt.v)
+                                wait(delayInt.v * 2)
                                 sampSendClickTextdraw(textDrawsPositions[td_position][1])
                                 wait(delayInt.v)
                             end
 
                             td_position = td_position + 1
 
-                            if sampGetCurrentDialogId() == 26539 then
+                            if sampGetCurrentDialogId() == 26540 then
                                 if total == 1 and toSell == 1 then
-                                    sampSendDialogResponse(26539, 1, nil, price)
+                                    sampSendDialogResponse(26540, 1, nil, price)
                                     toSell = 0
                                     
                                 elseif amount >= toSell then
 
                                     if toSell == 1 then
-                                        sampSendDialogResponse(26539, 1, nil, price)
+                                        sampSendDialogResponse(26540, 1, nil, price)
                                         toSell = 0
                                     else
-                                        sampSendDialogResponse(26539, 1, nil, toSell .. ", " .. price)
+                                        sampSendDialogResponse(26540, 1, nil, toSell .. ", " .. price)
                                         toSell = toSell - amount
                                     end
 
                                 elseif amount < toSell then
 
                                     if amount == 1 then
-                                        sampSendDialogResponse(26539, 1, nil, price)
+                                        sampSendDialogResponse(26540, 1, nil, price)
                                         toSell = toSell - amount
                                     else
-                                        sampSendDialogResponse(26539, 1, nil, amount .. ", " .. price)
+                                        sampSendDialogResponse(26540, 1, nil, amount .. ", " .. price)
                                         toSell = toSell - amount
                                     end
                                 end
+                            else
+                                sampAddChatMessage("[ERROR] Неверный ID диалога: " .. sampGetCurrentDialogId())  -- Отладочное сообщение
                             end
 
                             break
@@ -648,8 +649,8 @@ function removeSellProcess()
                         sampSendClickTextdraw(textdraws[t][1])
                         wait(delayInt.v)
                         
-                        if sampGetCurrentDialogId() == 26540 then
-                            sampSendDialogResponse(26540, 1)
+                        if sampGetCurrentDialogId() == 26541 then
+                            sampSendDialogResponse(26541, 1)
                             wait(delayInt.v)
                         end
                         
