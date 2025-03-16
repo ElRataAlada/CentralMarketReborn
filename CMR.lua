@@ -1,8 +1,8 @@
 script_name('Central Market Reborn')
-script_version('1.4.4')
+script_version('1.4.5')
 
 script_authors('Revinci')
-script_description('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+script_description('Автоматическое Выставление товаров на скупку и продажу')
 
 local imgui = require 'imgui'
 local encoding = require 'encoding'
@@ -128,21 +128,21 @@ function autoupdate(json_url, prefix, url)
                 lua_thread.create(function(prefix)
                   local dlstatus = require('moonloader').download_status
                   local color = -1
-                  sampAddChatMessage((prefix..'{FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ c '..thisScript().version..' пїЅпїЅ '..updateversion), settings.main.colormsg)
+                  sampAddChatMessage((prefix..'{FFFFFF}Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion), settings.main.colormsg)
                   wait(250)
                   downloadUrlToFile(updatelink, thisScript().path,
                     function(id3, status1, p13, p23)
                       if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
-                        print(string.format('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ %d пїЅпїЅ %d.', p13, p23))
+                        print(string.format('Загружено %d из %d.', p13, p23))
                       elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                        print('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.')
-                        sampAddChatMessage((prefix..'{FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!'), settings.main.colormsg)
+                        print('Загрузка обновления завершена.')
+                        sampAddChatMessage((prefix..'{FFFFFF}Обновление завершено!'), settings.main.colormsg)
                         goupdatestatus = true
                         lua_thread.create(function() wait(500) thisScript():reload() end)
                       end
                       if status1 == dlstatus.STATUSEX_ENDDOWNLOAD then
                         if goupdatestatus == nil then
-                          sampAddChatMessage((prefix..'{FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ..'), settings.main.colormsg)
+                          sampAddChatMessage((prefix..'{FFFFFF}Обновление прошло неудачно. Запускаю устаревшую версию..'), settings.main.colormsg)
                           update = false
                         end
                       end
@@ -152,11 +152,11 @@ function autoupdate(json_url, prefix, url)
                 )
               else
                 update = false
-                print('v'..thisScript().version..': пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.')
+                print('v'..thisScript().version..': Обновление не требуется.')
               end
             end
           else
-            print('v'..thisScript().version..': пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ '..url)
+            print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..url)
             update = false
           end
         end
@@ -171,12 +171,12 @@ function parseAvgPricesCR()
     avg_prices = jsonRead(getWorkingDirectory()..'\\config\\prices.json')
 
     if avg_prices == nil then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ cr.lua пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ prices.json', settings.main.colormsg)
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}CcпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ {ff0000} пїЅпїЅпїЅпїЅ', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Файл с средними ценами не найден. Установите cr.lua или скачайте файл prices.json', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Ccылка на тему находится во вкладке {ff0000} Инфо', settings.main.colormsg)
     else
         if avg_prices.last_update == -1 then
             avg_prices = nil
-            sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ prices.json', settings.main.colormsg)
+            sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Загрузите цены на центральном рынке или скачайте файл prices.json', settings.main.colormsg)
             return
         end
 
@@ -194,7 +194,7 @@ function parseAvgPricesCR()
         
         avg_prices = loc
 
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Средние цены успешно загружены.', settings.main.colormsg)
     end
 end
 
@@ -205,7 +205,7 @@ function parseAvgPricesCMS()
     loc = {}
 
     if avg_prices == nil then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Central Market Scanner', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Файл с средними ценами не найден. Установите Central Market Scanner', settings.main.colormsg)
     else
         for i = 1, #avg_prices do
             name = avg_prices[i].name
@@ -233,7 +233,7 @@ function parseAvgPricesCMS()
 
         avg_prices = loc
 
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Средние цены успешно загружены.', settings.main.colormsg)
     end
 
 end
@@ -270,7 +270,7 @@ function main()
     if not doesFileExist(json_file_AllSellItems) then jsonSave(json_file_AllSellItems, {}) end
     
     if doesFileExist('moonloader/config/Central Market/ARZCentral-settings.ini') then inicfg.save(settings, 'Central Market\\ARZCentral-settings') end
-    if not settings.main.imgui then sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {'..settings.main.color..'}/cmr{FFFFFF}.', settings.main.colormsg) end
+    if not settings.main.imgui then sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Скрипт загружен. Команда активации: {'..settings.main.color..'}/cmr{FFFFFF}.', settings.main.colormsg) end
  
     sampRegisterChatCommand('cmr', function( )
         allWindow.v = not allWindow.v imgui.Process = allWindow.v
@@ -314,16 +314,16 @@ function main()
 end
 
 function sampev.onServerMessage(color, text)
-    if delprod and text:find('пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)   
+    if delprod and text:find('У вас нет выставленного товара') then
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары сняты. Можете просканировать заново или выставить товар.', settings.main.colormsg)   
         delprod = not delprod
     end
 
-    if removeSell and text:find("пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 3 пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.") then
+    if removeSell and text:find("У вас есть 3 минуты, чтобы настроить товар, иначе аренда ларька будет отменена.") then
        removeSell = false
     end
     
-    local isError = text:match('%[пїЅпїЅпїЅпїЅпїЅпїЅ%]') ~= nil
+    local isError = text:match('%[Ошибка%]') ~= nil
 
     if isError then
         if buyProc or sellProc or removeSell then
@@ -433,7 +433,7 @@ local td_left = {
 function sellProcess()
 
     if sellProc then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Выставляю товары на продажу! Подождите', settings.main.colormsg)
         
         wait(delayInt.v*2)
         sampCloseCurrentDialogWithButton(0)
@@ -560,7 +560,7 @@ function sellProcess()
                                     end
                                 end
                             else
-                                sampAddChatMessage("[ERROR] пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: " .. sampGetCurrentDialogId())  -- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                sampAddChatMessage("[ERROR] Неверный ID диалога: " .. sampGetCurrentDialogId())  -- Отладочное сообщение
                             end
 
                             break
@@ -584,7 +584,7 @@ function sellProcess()
             if math.modf(x) == 440 and math.modf(y) == 364 then
                 sampCloseCurrentDialogWithButton(0)
                 wait(delayInt.v)
-                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg)
                 sampSendClickTextdraw(i)
                 setState(STATES.sellWindowState)
                 break
@@ -617,7 +617,7 @@ end
 
 function removeSellProcess()
     if removeSell then
-        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Удаляю товары. Подождите', settings.main.colormsg)
 
         wait(delayInt.v*3)
 
@@ -677,7 +677,7 @@ function removeSellProcess()
 
             if math.modf(x) == 440 and math.modf(y) == 364 then
                 sampCloseCurrentDialogWithButton(0)
-                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+                sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно сняты. Можете просканировать заново или выставить товар.', settings.main.colormsg)
                 sampSendClickTextdraw(i)
                 break
             end
@@ -686,18 +686,18 @@ function removeSellProcess()
 end
 
 
-function sampev.onShowDialog(id, style, title, button1, button2, text) -- пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+function sampev.onShowDialog(id, style, title, button1, button2, text) -- хук диалога
     lua_thread.create(function()
-    if title:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ') and buyProc then
+    if title:find('Выберите действие') and buyProc then
         wait(parserBuf.v)
         sampSendDialogResponse(id, 1, 0)
     end
 end)
-    if id == 3050 and check then -- пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
+    if id == 3050 and check then -- тут мы парсим список товаров на скуп
         lua_thread.create(parserPage, text, title)
     end
 
-    if id == 25493 and check then -- пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    if id == 25493 and check then -- тут мы парсим список товаров на продажу
         lua_thread.create(parseInventoryItems, text, title)
     end
 
@@ -757,14 +757,14 @@ end)
         end
     end
     
-    if title:find('пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') and text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') and buyProc then
+    if title:find('Поиск товара') and text:find('Введите наименование товара') and buyProc then
         lua_thread.create(function()
             wait(parserBuf.v)
             sampSendDialogResponse(id, 1, 1, presets.buy[buyPresetIndex.v + 1].items[idt][1])
         end)
     end
     
-    if title:find('пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') and not text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ') and buyProc then
+    if title:find('Поиск товара') and not text:find('Введите наименование товара') and buyProc then
         lua_thread.create(function()
             local ditem = 0
             for n in text:gmatch('[^\r\n]+') do
@@ -792,7 +792,7 @@ end)
     end
 
     if buyProc then
-        if text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ') then
+        if text:find('Введите цену за товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
                 
@@ -807,12 +807,12 @@ end)
                 if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
                     local isEndBuy = true
                     setState(STATES.mainWindowState)
-                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg) skip = false buyProc = false
+                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
                 else
                     idt = idt + 1
                 end
             end)
-        elseif text:find('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ') then
+        elseif text:find('Введите количество и цену за один товар') then
             lua_thread.create(function()
                 wait(parserBuf.v)
 
@@ -827,7 +827,7 @@ end)
                 if tonumber(idt) == tonumber(#presets.buy[buyPresetIndex.v + 1].items) then
                     local isEndBuy = true
                     setState(STATES.mainWindowState)
-                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg) skip = false buyProc = false
+                    sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Товары успешно выставлены! Удачи', settings.main.colormsg) skip = false buyProc = false
                 else
                     idt = idt + 1
                 end
@@ -909,14 +909,14 @@ function parseInventoryItems(text, title)
     skip = false
     local isNext,i = false, 0
 
-    for n in text:gmatch('[^\r\n]+') do -- пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
-        if not n:find("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ") and not n:find(">>") then      
+    for n in text:gmatch('[^\r\n]+') do -- чек построчно 
+        if not n:find("Название") and not n:find(">>") then      
             
-            local amount = tonumber(n:match("%[(%d+) пїЅпїЅ%]")) or 0
+            local amount = tonumber(n:match("%[(%d+) шт%]")) or 0
             local item = n:match("%] (.+)\t%{......%}(.+)")
             local position = n:match("%[(%d+)%]")
             
-            if item ~= "[пїЅпїЅпїЅпїЅ] пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" and item ~= nil and not n:find("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ") then
+            if item ~= "[слот] Название" and item ~= nil and not n:find("Инвентарь") then
                 local isFound = false
                 
                 item_toch = item:match("(+%d+)")
@@ -964,7 +964,7 @@ function parseInventoryItems(text, title)
         end
 
         
-        if n:find(">>") then wait(parserBuf.v) sampSendDialogResponse(25493, 1, i-1) isNext = true end -- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        if n:find(">>") then wait(parserBuf.v) sampSendDialogResponse(25493, 1, i-1) isNext = true end -- следующая страничка
         i = i + 1
     end
 
@@ -995,14 +995,14 @@ function parseInventoryItems(text, title)
     end
 end
 
-function parserPage(text, title) -- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ Devilov'a
+function parserPage(text, title) -- переделал функу Devilov'a
     skip = true
 	local isNext,i = false, 0
     local cur, max = title:match('(%d+)/(%d+)')
 
-    for n in text:gmatch('[^\r\n]+') do -- пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+    for n in text:gmatch('[^\r\n]+') do -- чек построчно 
             local item = n:match("%{777777%}(.+)%s%{B6B425%}")
-            if item ~= "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" and item ~= nil then
+            if item ~= "Название" and item ~= nil then
                 local isFound = false
                 for g, f in pairs(itemsBuy) do 
                     if item == itemsBuy[g][1] then
@@ -1011,11 +1011,11 @@ function parserPage(text, title) -- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 
                 end
                 if not isFound then table.insert(itemsBuy, {item, settings.main.classiccount, settings.main.classicprice}) end
             end
-		if n:find(">>>") and (cur ~= max) then wait(parserBuf.v) sampSendDialogResponse(3050, 1, i-1) isNext = true end -- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		if n:find(">>>") and (cur ~= max) then wait(parserBuf.v) sampSendDialogResponse(3050, 1, i-1) isNext = true end -- следующая страничка
         i = i + 1
 	end
     
-    if not isNext then check = false sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {'..settings.main.color..'}/cmr', settings.main.colormsg) jsonSave(json_file_BuyList, itemsBuy) sampSendDialogResponse(3050, 0) skip = false end
+    if not isNext then check = false sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Проверка списков прошла успешно! Откройте меню по команде: {'..settings.main.color..'}/cmr', settings.main.colormsg) jsonSave(json_file_BuyList, itemsBuy) sampSendDialogResponse(3050, 0) skip = false end
 end
 imgui.Scroller = {
 	_ids = {},
@@ -1098,10 +1098,10 @@ local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
 
 function menu(imgui)
     imgui.BeginMenuBar()
-    if imgui.MenuItem(u8'пїЅпїЅпїЅпїЅпїЅпїЅ') then setState(STATES.mainWindowState) end 
-    if imgui.MenuItem(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ') then setState(STATES.sellWindowState) end
-    if imgui.MenuItem(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ') then setState(STATES.settingWindowState) end
-    if imgui.MenuItem(u8'пїЅпїЅпїЅпїЅ') then setState(STATES.infoWindowState) end
+    if imgui.MenuItem(u8'Скупка') then setState(STATES.mainWindowState) end 
+    if imgui.MenuItem(u8'Продажа') then setState(STATES.sellWindowState) end
+    if imgui.MenuItem(u8'Настройки') then setState(STATES.settingWindowState) end
+    if imgui.MenuItem(u8'Инфо') then setState(STATES.infoWindowState) end
     imgui.EndMenuBar()
 end
 
@@ -1147,7 +1147,7 @@ function imgui.OnDrawFrame()
             end
 
             imgui.Dummy(imgui.ImVec2(0, 5))
-            imgui.CText(redText('пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ!'))
+            imgui.CText(redText('Авто-обновление скрипта!'))
             imgui.Dummy(imgui.ImVec2(0, 5))
             
             imgui.PopFont()
@@ -1161,25 +1161,25 @@ function imgui.OnDrawFrame()
             imgui.PushFont(fontsize)
             imgui.Separator()
             imgui.Dummy(imgui.ImVec2(0, 25))
-            imgui.CText(u8'пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
-            imgui.CText(u8'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ')
+            imgui.CText(u8'Авто-обновление скрипта - это функция, которая позволяет скачивать новые версии скрипта автоматически')
+            imgui.CText(u8'Без авто-обновления вам придется самостоятельно скачивать его на сайте')
             
             imgui.Dummy(imgui.ImVec2(0, 25))
             
-            imgui.CText(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"')
+            imgui.CText(u8'Выберите вариант и нажмите "Сохранить"')
             
-            imgui.CText(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"')
+            imgui.CText(u8'Выбор можно будет изменить во вкладке "Настройки"')
             
             imgui.Dummy(imgui.ImVec2(0, 50))
 
             imgui.Dummy(imgui.ImVec2(450, 50))
             imgui.SameLine()
-            imgui.Checkbox(u8'пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', useAutoupdate)
+            imgui.Checkbox(u8'Авто-обновление скрипта', useAutoupdate)
             
             imgui.Dummy(imgui.ImVec2(50, 0))
             imgui.SameLine()
 
-            if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(1100, 50)) then
+            if imgui.Button(u8'Сохранить', imgui.ImVec2(1100, 50)) then
                 settings.main.useAutoupdate = useAutoupdate.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 fontsize = nil
@@ -1221,7 +1221,7 @@ function imgui.OnDrawFrame()
 
                 imgui.SameLine()
 
-                if imgui.Combo(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', buyPresetIndex, byPresetNames, #byPresetNames) then
+                if imgui.Combo(u8'Пресет', buyPresetIndex, byPresetNames, #byPresetNames) then
                     settings.main.buyPresetIndex = buyPresetIndex.v
                     inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 end
@@ -1230,7 +1230,7 @@ function imgui.OnDrawFrame()
                 imgui.Dummy(imgui.ImVec2(10, 2))
                 imgui.SameLine()
                 
-                imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: ')
+                imgui.Text(u8'Добавить пресет: ')
                 imgui.SameLine()
                 imgui.InputText(u8'##1', buyPresetNameInput)
                 imgui.SameLine()
@@ -1245,7 +1245,7 @@ function imgui.OnDrawFrame()
                 end
 
                 imgui.BeginChild('#dfgdfg', imgui.ImVec2(500, 500))
-                imgui.InputText(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', findBuf)
+                imgui.InputText(u8'Поиск по названию', findBuf)
                 imgui.Separator()
                 if settings.main.smoothscroll then
                 imgui.BeginChild("##1", imgui.ImVec2(500, 470), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1345,14 +1345,14 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.SameLine()
                 imgui.BeginChild("##234", imgui.ImVec2(250, 500))
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(120, 20)) then
+                if imgui.Button(u8'Сканер', imgui.ImVec2(120, 20)) then
                     
-                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Проверка товаров.', settings.main.colormsg)
                         check, checkmode = true, 1
                         press_alt()
 
                 end
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(120, 20), imgui.SameLine()) then presets.buy[buyPresetIndex.v + 1].items = {} jsonSave(json_file_presets, presets) end
+                if imgui.Button(u8"Очистить", imgui.ImVec2(120, 20), imgui.SameLine()) then presets.buy[buyPresetIndex.v + 1].items = {} jsonSave(json_file_presets, presets) end
                 imgui.Separator()
                 if settings.main.smoothscroll then
                     imgui.BeginChild("##scroll2", imgui.ImVec2(249, 470), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1371,7 +1371,7 @@ function imgui.OnDrawFrame()
                 end
                     imgui.EndChild()
                     imgui.EndChild()
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(500, 40)) then
+                if imgui.Button(u8"Продолжить", imgui.ImVec2(500, 40)) then
                    
                     mainWindowState = false secondaryWindowState = true inputs = {}
 
@@ -1380,18 +1380,18 @@ function imgui.OnDrawFrame()
                     end
                 end
                 imgui.SameLine()
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(250, 40)) then
-                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' or '[ Central Market Reborn ]: {FFFFFF}CпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+                if imgui.Button(u8'Снять Скупку', imgui.ImVec2(250, 40)) then
+                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки' or '[ Central Market Reborn ]: {FFFFFF}Cнятия с скупки. Подождите', settings.main.colormsg)
                     delprod, delprodc = not delprod, 4
                     press_alt()
                 end
             else    
-                imgui.Text(u8"пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\nпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ! \nпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ'!")
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(330, 25)) then 
+                imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже! \nЗатем нажмите в лавке 'Выставить товар на покупку'!")
+                if imgui.Button(u8'Сканер', imgui.ImVec2(330, 25)) then 
                     
                     check, checkmode = true, 1
                     press_alt()
-                    sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+                    sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
 
                 end
             end
@@ -1404,11 +1404,11 @@ function imgui.OnDrawFrame()
             menu(imgui)
             
             if #itemsSell ~= 0 then
-                imgui.Text(u8"пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:", imgui.SetCursorPosX(170))
+                imgui.Text(u8"Все загруженные предметы:", imgui.SetCursorPosX(170))
                 imgui.SameLine()
-                imgui.Text(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:", imgui.SetCursorPosX(565))
+                imgui.Text(u8"Выбранные предметы:", imgui.SetCursorPosX(565))
                 imgui.BeginChild('#fdghs', imgui.ImVec2(500, 500))
-                imgui.InputText(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', findBuf)
+                imgui.InputText(u8'Поиск по названию', findBuf)
                 imgui.Separator()
                 if settings.main.smoothscroll then
                 imgui.BeginChild("##1", imgui.ImVec2(500, 470), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1459,7 +1459,7 @@ function imgui.OnDrawFrame()
 
                             imgui.SameLine()
 
-                            imgui.Text(u8(" - "..itemsSell[i][2].." пїЅпїЅ."))
+                            imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
 
                             if incart then
                                 imgui.PopStyleColor(3)
@@ -1512,7 +1512,7 @@ function imgui.OnDrawFrame()
     
                                 imgui.SameLine()
     
-                                imgui.Text(u8(" - "..itemsSell[i][2].." пїЅпїЅ."))
+                                imgui.Text(u8(" - "..itemsSell[i][2].." шт."))
     
                                 if incart then
                                     imgui.PopStyleColor(3)
@@ -1526,9 +1526,9 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.SameLine()
                 imgui.BeginChild("##234", imgui.ImVec2(300, 500))
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(140, 20)) then
+                if imgui.Button(u8'Сканер', imgui.ImVec2(140, 20)) then
                     if #itemsBuy == 0 then
-                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!', settings.main.colormsg)
+                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Сначала просканируйте предметы для скупки!', settings.main.colormsg)
                     else
                         sampSendChat('/stats')
                         sampSendDialogResponse(235, 1, -1, nil)
@@ -1538,7 +1538,7 @@ function imgui.OnDrawFrame()
                         check = true
                     end
                 end
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(140, 20), imgui.SameLine()) then myItemsSell = {} jsonSave(json_file_mySellList, myItemsSell) end
+                if imgui.Button(u8"Очистить", imgui.ImVec2(140, 20), imgui.SameLine()) then myItemsSell = {} jsonSave(json_file_mySellList, myItemsSell) end
                 imgui.Separator()
                 if settings.main.smoothscroll then
                     imgui.BeginChild("##scroll2", imgui.ImVec2(295, 470), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1558,26 +1558,26 @@ function imgui.OnDrawFrame()
                 end
                     imgui.EndChild()
                     imgui.EndChild()
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(500, 40)) then setState(STATES.sellWindow2State) inputs = {}
+                if imgui.Button(u8"Продолжить", imgui.ImVec2(500, 40)) then setState(STATES.sellWindow2State) inputs = {}
                     
                     for i=1, #myItemsSell do
                         if itemsSell[i][4] then table.insert(inputs, {imgui.ImInt(itemsSell[i][2]), imgui.ImInt(itemsSell[i][3]), i, false, imgui.ImBool(itemsSell[i][5])}) end
                     end
                 end
                 imgui.SameLine()
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(300, 40)) then
+                if imgui.Button(u8"Снять продажу", imgui.ImVec2(300, 40)) then
                     
-                    sampAddChatMessage(removeSell and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+                    sampAddChatMessage(removeSell and '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с продажи' or '[ Central Market Reborn ]: {FFFFFF}Снятие с продажи', settings.main.colormsg)
                     removeSell = not removeSell
                     press_alt()
                 end
             
             else
-                imgui.Text(u8"пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\nпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ!")
+                imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже!")
                 
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(330, 25)) then
+                if imgui.Button(u8'Сканер', imgui.ImVec2(330, 25)) then
                     if #itemsBuy == 0 then
-                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!', settings.main.colormsg)
+                        sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}Сначала просканируйте предметы для скупки!', settings.main.colormsg)
                     else
                         sampSendChat('/stats')
                         sampSendDialogResponse(235, 1, -1, nil)
@@ -1597,14 +1597,14 @@ function imgui.OnDrawFrame()
             menu(imgui)
 
             if #itemsBuy ~= 0 then
-                imgui.Text(u8"пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:", imgui.SetCursorPosX(100))
+                imgui.Text(u8"Все загруженные предметы:", imgui.SetCursorPosX(100))
                 imgui.SameLine()
-                imgui.Text(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:", imgui.SetCursorPosX(500))
+                imgui.Text(u8"Выбранные предметы:", imgui.SetCursorPosX(500))
                 imgui.BeginChild("##11", imgui.ImVec2(500, 470))
-                    imgui.RadioButton(u8"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", rbut, 1)
-                    imgui.RadioButton(u8"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", rbut, 2)
-                    if rbut.v == 1 then imgui.InputText(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', findBuf) end
-                    if rbut.v == 2 then imgui.InputInt(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', findBufInt) end
+                    imgui.RadioButton(u8"Искать по названию предмета", rbut, 1)
+                    imgui.RadioButton(u8"Искать по номеру предмета", rbut, 2)
+                    if rbut.v == 1 then imgui.InputText(u8'Поиск по названию', findBuf) end
+                    if rbut.v == 2 then imgui.InputInt(u8'Поиск по номеру', findBufInt) end
                     for i, f in pairs(itemsBuy) do
                         local isFounded = false
                         if rbut.v == 1 then
@@ -1619,14 +1619,14 @@ function imgui.OnDrawFrame()
                                 end
                                 
                                 imgui.Text(u8(itemsBuy[i][1]), imgui.SameLine())
-                                if itemsBuy[i][2] ~= 1 then imgui.Text(u8(' - '..itemsBuy[i][2]..' пїЅпїЅ.'), imgui.SameLine()) end
+                                if itemsBuy[i][2] ~= 1 then imgui.Text(u8(' - '..itemsBuy[i][2]..' шт.'), imgui.SameLine()) end
                                 isFounded = true
                             end
                         end
                         if rbut.v == 2 then
                             if tostring(i):match(findBufInt.v, 0, true) then
                                 if imgui.Button(tostring(i)) then stable(i) end
-                                if itemsBuy[i][2] ~= 1 then  imgui.Text(u8(itemsBuy[i][2]..' пїЅпїЅ.'), imgui.SameLine()) end
+                                if itemsBuy[i][2] ~= 1 then  imgui.Text(u8(itemsBuy[i][2]..' шт.'), imgui.SameLine()) end
                                 imgui.Text(u8(itemsBuy[i][1]), imgui.SameLine())
                                 isFounded = true
                             end
@@ -1634,20 +1634,20 @@ function imgui.OnDrawFrame()
                     end
                     imgui.EndChild()
                     imgui.BeginChild("##21", imgui.ImVec2(250, 470), imgui.SameLine())
-                    if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(120, 25)) then
+                    if imgui.Button(u8'Сканер', imgui.ImVec2(120, 25)) then
                         check, checkmode, itemsBuy = not check, 2, ({})
-                        sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+                        sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
                     end
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(120, 25), imgui.SameLine()) then for i=1, #itemsBuy do itemsBuy[i][4] = false end end
+                    if imgui.Button(u8"Очистить", imgui.ImVec2(120, 25), imgui.SameLine()) then for i=1, #itemsBuy do itemsBuy[i][4] = false end end
                     for i=1, #itemsBuy do
                         if itemsBuy[i][4] then
                             if imgui.Button("#"..i) then itemsBuy[i][4] = false end
                             imgui.Text(u8(" "..itemsBuy[i][1]), imgui.SameLine())
-                            if itemsBuy[i][2] ~= 1 then imgui.Text(u8(' - '..itemsBuy[i][2]..' пїЅпїЅ.'), imgui.SameLine()) end
+                            if itemsBuy[i][2] ~= 1 then imgui.Text(u8(' - '..itemsBuy[i][2]..' шт.'), imgui.SameLine()) end
                         end
                     end
                 imgui.EndChild()
-                if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(500, 40)) then
+                if imgui.Button(u8"Продолжить", imgui.ImVec2(500, 40)) then
                     
                     
                     inputsSell = {} secondarybuyWindowState = true buyWindowState = false
@@ -1664,17 +1664,17 @@ function imgui.OnDrawFrame()
                     end
                 end
                 imgui.SameLine()
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(250, 40)) then
+                if imgui.Button(u8'Снять Продажу', imgui.ImVec2(250, 40)) then
                     
                     delprod, delprodc = not delprod, 1
-                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ {'..settings.main.color..'}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+                    sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Нажмите на кнопку {'..settings.main.color..'}«Удалить товар с продажи»' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с продажи', settings.main.colormsg)
                 end
             else    
-                imgui.Text(u8"пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\nпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ! \nпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ'!")
-                if imgui.Button(u8'пїЅпїЅпїЅпїЅпїЅпїЅ', imgui.ImVec2(330, 25)) then 
+                imgui.Text(u8"К сожалению, у вас не загружены предметы\nЧто-бы загрузить нажмите на кнопку ниже! \nЗатем нажмите в лавке 'Выставить товар на продажу'!")
+                if imgui.Button(u8'Сканер', imgui.ImVec2(330, 25)) then 
                     
                         check, checkmode, itemsBuy = not check, 2, ({})
-                        sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', settings.main.colormsg)
+                        sampAddChatMessage(check and '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров активирован.' or '[ Central Market Reborn ]: {FFFFFF}Режим проверки товаров деактивирован.', settings.main.colormsg)
                 end
             end
         end
@@ -1687,7 +1687,7 @@ function imgui.OnDrawFrame()
             imgui.BeginChild("##3", imgui.ImVec2(460, 450), false)
                 imgui.InputText('##findmy', findMyItem)
                 imgui.SameLine()
-                imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+                imgui.Text(u8'Поиск по названию')
                 imgui.Separator()
                 if settings.main.smoothscroll then
                     imgui.BeginChild("##2", imgui.ImVec2(460, 400), false, imgui.WindowFlags.NoScrollWithMouse)
@@ -1715,9 +1715,9 @@ function imgui.OnDrawFrame()
                             local price = avg_prices[presets.buy[buyPresetIndex.v + 1].items[i][1]].sa.buy.price
 
                             if type(price) == "table" then
-                                text = " | пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
+                                text = " | Средняя цена: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
                             else
-                                text = " | пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " .. comma_value(price).." $"
+                                text = " | Средняя цена: " .. comma_value(price).." $"
                             end
 
                             if price == 0 then
@@ -1730,10 +1730,10 @@ function imgui.OnDrawFrame()
                         local bcount = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][2])
                         local bprice = imgui.ImInt(presets.buy[buyPresetIndex.v + 1].items[i][3])
                         
-                        imgui.Text(u8('пїЅпїЅпїЅ-пїЅпїЅ.'))
+                        imgui.Text(u8('Кол-во.'))
                         imgui.SameLine()
                         imgui.InputInt(('##count' .. i), bcount)
-                        imgui.Text(u8('пїЅпїЅпїЅпїЅ.   '))
+                        imgui.Text(u8('Цена.   '))
                         imgui.SameLine()
                         imgui.InputInt(('##price' .. i), bprice)
 
@@ -1788,7 +1788,7 @@ function imgui.OnDrawFrame()
                             presets.buy[buyPresetIndex.v + 1].items[i][3], presets.buy[buyPresetIndex.v + 1].items[i+1][3] = presets.buy[buyPresetIndex.v + 1].items[i+1][3], presets.buy[buyPresetIndex.v + 1].items[i][3]
                             jsonSave(json_file_presets, presets)
                         end
-                        imgui.TextColoredRGB('пїЅпїЅпїЅпїЅпїЅ: ' .. yellowText(comma_value(bcount.v * bprice.v)) .. ' $')
+                        imgui.TextColoredRGB('Всего: ' .. yellowText(comma_value(bcount.v * bprice.v)) .. ' $')
                         imgui.Separator()
                     end
                 end
@@ -1839,10 +1839,10 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.EndChild()
                 imgui.BeginGroup(imgui.SameLine())
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(240, 75)) then secondaryWindowState = false mainWindowState = true end
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(240, 75)) then 
+                    if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then secondaryWindowState = false mainWindowState = true end
+                    if imgui.Button(u8"Начать скупку", imgui.ImVec2(240, 75)) then 
                         idt = 1
-                        sampAddChatMessage(buyProc and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg)
+                        sampAddChatMessage(buyProc and '[ Central Market Reborn ]: {FFFFFF}Прекращаю выставление товаров' or '[ Central Market Reborn ]: {FFFFFF}Выставляю товары на скупку', settings.main.colormsg)
                         buyProc, isEndBuy = not buyProc, false
 
 
@@ -1850,18 +1850,18 @@ function imgui.OnDrawFrame()
 
                         for i=1, #inputs do itemsBuy[inputs[i][3]][2] = inputs[i][1].v itemsBuy[inputs[i][3]][3] = inputs[i][2].v itemsBuy[inputs[i][3]][5] = inputs[i][5].v inicfg.save(itemsBuy, 'Central Market\\ARZCentral.ini') end 
                     end
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(240, 75)) then 
+                    if imgui.Button(u8"Снять скупку", imgui.ImVec2(240, 75)) then 
                         delprod, delprodc = not delprod, 4
                         press_alt()
-                        sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ {'..settings.main.color..'}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ' or '[ Central Market Reborn ]: {FFFFFF}пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', settings.main.colormsg) end
+                        sampAddChatMessage(delprod and '[ Central Market Reborn ]: {FFFFFF}Нажмите на кнопку {'..settings.main.color..'}«Прекратить покупку товара»' or '[ Central Market Reborn ]: {FFFFFF}Отмена снятия с скупки', settings.main.colormsg) end
                 imgui.EndGroup()
             local mon = 0
             for i, n in pairs(presets.buy[buyPresetIndex.v + 1].items) do 
                 mon = mon + (presets.buy[buyPresetIndex.v + 1].items[i][2] * presets.buy[buyPresetIndex.v + 1].items[i][3])
             end
             if getPlayerMoney() < mon then color = "{ff2400}" else color = "{178f2b}" end
-            imgui.Text(u8("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: "..comma_value(mon).." $"))
-            imgui.TextColoredRGB("пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: "..color..comma_value(getPlayerMoney()).." $")
+            imgui.Text(u8("Всего будет потрачено: "..comma_value(mon).." $"))
+            imgui.TextColoredRGB("Ваши вирты: "..color..comma_value(getPlayerMoney()).." $")
         end
 
 
@@ -1872,7 +1872,7 @@ function imgui.OnDrawFrame()
             imgui.BeginChild("##3", imgui.ImVec2(700, 650), false)
                 imgui.InputText('##findmy', findMyItem)
                 imgui.SameLine()
-                imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+                imgui.Text(u8'Поиск по названию')
                 imgui.Separator()
 
                 if settings.main.smoothscroll then
@@ -1921,9 +1921,9 @@ function imgui.OnDrawFrame()
                             local price = avg_prices[myItemsSell[i][1]].sa.sell.price
 
                             if type(price) == "table" then
-                                text = " | пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
+                                text = " | Средняя цена: " .. comma_value(price[1]).." $ - "..comma_value(price[2]).." $"
                             else
-                                text = " | пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " .. comma_value(price).." $"
+                                text = " | Средняя цена: " .. comma_value(price).." $"
                             end
 
                             if price == 0 then
@@ -1935,7 +1935,7 @@ function imgui.OnDrawFrame()
                         imgui.Dummy(imgui.ImVec2(0,3))
                         imgui.Dummy(imgui.ImVec2(4,0))
                         imgui.SameLine()
-                        imgui.TextColoredRGB(i .. ' - ' .. myItemsSell[i][1] .. ' | пїЅпїЅпїЅпїЅпїЅ ' ..yellowText(comma_value(total_amount)).. ' пїЅпїЅ.'..text)
+                        imgui.TextColoredRGB(i .. ' - ' .. myItemsSell[i][1] .. ' | всего ' ..yellowText(comma_value(total_amount)).. ' шт.'..text)
                         
                         imgui.Dummy(imgui.ImVec2(0,6))
                         imgui.Dummy(imgui.ImVec2(4,0))
@@ -1953,7 +1953,7 @@ function imgui.OnDrawFrame()
                         local bcount = imgui.ImInt(sellAll.v and total_amount or myItemsSell[i][2])
                         
                         imgui.PushItemWidth(200)
-                        imgui.Text(u8('пїЅпїЅпїЅ-пїЅпїЅ.'))
+                        imgui.Text(u8('Кол-во.'))
                         imgui.SameLine()
                         if imgui.InputInt(('##count' .. i), bcount) then
                             if bcount.v < 0 then
@@ -1971,7 +1971,7 @@ function imgui.OnDrawFrame()
                         imgui.SameLine()
                         imgui.Dummy(imgui.ImVec2(20,0))
                         imgui.SameLine()            
-                        if imgui.Checkbox(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ'.."##"..i, sellAll) then
+                        if imgui.Checkbox(u8'Продать все'.."##"..i, sellAll) then
                             myItemsSell[i][4] = sellAll.v
                             jsonSave(json_file_mySellList, myItemsSell)
                             
@@ -1984,7 +1984,7 @@ function imgui.OnDrawFrame()
                         
                         imgui.Dummy(imgui.ImVec2(4,0))
                         imgui.SameLine()
-                        imgui.Text(u8('пїЅпїЅпїЅпїЅ.   '))
+                        imgui.Text(u8('Цена.   '))
                         imgui.SameLine()
                         if imgui.InputInt(('##price' .. i), bprice) then
                             if bprice.v < 10 then
@@ -2029,10 +2029,10 @@ function imgui.OnDrawFrame()
                         imgui.Dummy(imgui.ImVec2(0,3))
                         imgui.Dummy(imgui.ImVec2(4,0))
                         imgui.SameLine()
-                        imgui.TextColoredRGB('пїЅпїЅпїЅпїЅпїЅ: ' .. greenText(comma_value(bcount.v * bprice.v)) .. ' $')
+                        imgui.TextColoredRGB('Всего: ' .. greenText(comma_value(bcount.v * bprice.v)) .. ' $')
                         imgui.Dummy(imgui.ImVec2(4,0))
                         imgui.SameLine()
-                        imgui.TextColoredRGB('пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ' .. comma_value(math.modf((bcount.v * bprice.v)*commision.v/100))..' $ ( '..commision.v..'% )')
+                        imgui.TextColoredRGB('Коммисия: ' .. comma_value(math.modf((bcount.v * bprice.v)*commision.v/100))..' $ ( '..commision.v..'% )')
                         imgui.Dummy(imgui.ImVec2(0,3))
                         imgui.Separator()
                     end
@@ -2042,13 +2042,13 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.EndChild()
                 imgui.BeginGroup(imgui.SameLine())
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(240, 75)) then setState(STATES.sellWindowState) end
+                    if imgui.Button(u8"Вернуться к выбору", imgui.ImVec2(240, 75)) then setState(STATES.sellWindowState) end
                     imgui.Dummy(imgui.ImVec2(1,480))
                     imgui.Dummy(imgui.ImVec2(15,0))
                     imgui.SameLine()
 
                     imgui.Dummy(imgui.ImVec2(0,5))
-                    if imgui.Button(u8"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", imgui.ImVec2(240, 75)) then 
+                    if imgui.Button(u8"Начать продажу", imgui.ImVec2(240, 75)) then 
                         idt = 1
                         sellProc = true
                         press_alt()
@@ -2077,7 +2077,7 @@ function imgui.OnDrawFrame()
             end
             
             imgui.TextColoredRGB(greenText(comma_value(total)).." $ - "..yellowText(comma_value(math.modf((total*commision.v)/100))).." $ ( "..commision.v.."% )")
-            imgui.TextColoredRGB("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: "..greenText(comma_value(math.modf((total - (total*commision.v)/100)))).." $")
+            imgui.TextColoredRGB("Всего будет заработано: "..greenText(comma_value(math.modf((total - (total*commision.v)/100)))).." $")
         end
 
 
@@ -2091,7 +2091,7 @@ function imgui.OnDrawFrame()
 
             imgui.Dummy(imgui.ImVec2(0,10))
 
-            if imgui.Checkbox(u8"пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ", useAutoupdate) then
+            if imgui.Checkbox(u8"Авто-обновление", useAutoupdate) then
                 settings.main.useAutoupdate = useAutoupdate.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
 
@@ -2102,7 +2102,7 @@ function imgui.OnDrawFrame()
             
             imgui.Dummy(imgui.ImVec2(0,margin_size))
 
-            if imgui.Combo(u8("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ"), avgPriceMode, {'cr.lua', 'Central Market Scaner'}, 2) then
+            if imgui.Combo(u8("Средние цены"), avgPriceMode, {'cr.lua', 'Central Market Scaner'}, 2) then
                 settings.main.avgPriceMode = avgPriceMode.v + 1
 
                 if settings.main.avgPriceMode == 1 then
@@ -2118,17 +2118,17 @@ function imgui.OnDrawFrame()
 
             imgui.Dummy(imgui.ImVec2(0,margin_size))
             
-            imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+            imgui.Text(u8'Задержка для диалогов')
             if imgui.SliderInt('##delay2', parserBuf, 50, 200) then settings.main.delayParse = parserBuf.v inicfg.save(settings, 'Central Market\\ARZCentral-settings') end 
             
-            imgui.Text(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+            imgui.Text(u8'Задержка на выставление товаров')
             if imgui.SliderInt('##delay', delayInt, 50, 1000) then settings.main.delayVist = delayInt.v inicfg.save(settings, 'Central Market\\ARZCentral-settings') end 
             
             imgui.Dummy(imgui.ImVec2(0,margin_size))
 
             imgui.PushItemWidth(200)
 
-            if imgui.Combo(u8("пїЅпїЅпїЅпїЅпїЅ"), selectStyle, {'Dark Style', 'Purple Style', 'Blue-Gray Style', 'Orange Style', 'Blue-Black', 'Green Style', 'Purpur Style', 'Red Style', 'Yellow Style'}, 9) then
+            if imgui.Combo(u8("Стиль"), selectStyle, {'Dark Style', 'Purple Style', 'Blue-Gray Style', 'Orange Style', 'Blue-Black', 'Green Style', 'Purpur Style', 'Red Style', 'Yellow Style'}, 9) then
                 if selectStyle.v == 0 then setDarkStyle() elseif selectStyle.v == 1 then setPurpleStyle() elseif selectStyle.v == 2 then  setBlueGraytheme() elseif selectStyle.v == 3 then setOrangeStyle() elseif selectStyle.v == 4 then setBlueBlackStyle() elseif selectStyle.v == 5 then setGreenStyle() elseif selectStyle.v == 6 then setPurpurStyle() elseif selectStyle.v == 7 then setRedStyle() elseif selectStyle.v == 8 then setYellowStyle() end
                 settings.main.style = selectStyle.v + 1
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
@@ -2136,36 +2136,36 @@ function imgui.OnDrawFrame()
 
             imgui.Dummy(imgui.ImVec2(0,margin_size))
 
-            if imgui.InputInt(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ %', commision) then
+            if imgui.InputInt(u8'Коммисия на продажу %', commision) then
                 settings.main.commision = commision.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
 
             imgui.Dummy(imgui.ImVec2(0,margin_size))
             
-            if imgui.InputInt(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', ccount) then
+            if imgui.InputInt(u8'Количество при добавлении', ccount) then
                 settings.main.classiccount = ccount.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
             
-            if imgui.InputInt(u8'пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', cprice) then
+            if imgui.InputInt(u8'Цена при добавлении', cprice) then
                 settings.main.classicprice = cprice.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
             
             imgui.Dummy(imgui.ImVec2(0,margin_size))
-            if imgui.Checkbox(u8'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', smooth) then
+            if imgui.Checkbox(u8'Плавная прокрутка списков', smooth) then
                 settings.main.smoothscroll = smooth.v
                 inicfg.save(settings, 'Central Market\\ARZCentral-settings')
             end
             imgui.Dummy(imgui.ImVec2(0,1))
             if smooth.v then
-                if imgui.InputInt(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', smoothInt1) then
+                if imgui.InputInt(u8'Строк за одно деление прокрутки', smoothInt1) then
                     settings.main.smoothhigh = smoothInt1.v
                     inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 end
 
-                if imgui.InputInt(u8'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', smoothInt2) then
+                if imgui.InputInt(u8'Время анимации прокрутки', smoothInt2) then
                     settings.main.smoothdelay = smoothInt2.v
                     inicfg.save(settings, 'Central Market\\ARZCentral-settings')
                 end
@@ -2188,31 +2188,31 @@ function imgui.OnDrawFrame()
             menu(imgui)
 
             imgui.PushFont(logosize)
-            imgui.SetCursorPosX((imgui.GetWindowWidth() - imgui.CalcTextSize(u8("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")).x) / 2)
-            imgui.TextColoredRGB('{'..settings.main.color..'}пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ')
+            imgui.SetCursorPosX((imgui.GetWindowWidth() - imgui.CalcTextSize(u8("Основные ссылочки")).x) / 2)
+            imgui.TextColoredRGB('{'..settings.main.color..'}Основные ссылочки')
             imgui.PopFont()
             imgui.Separator()
             imgui.PushFont(fontsize)
             
             
             imgui.Dummy(imgui.ImVec2(1,0))
-            imgui.Text(u8'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ Yondime')
+            imgui.Text(u8'Это доработаный скрипт от Yondime')
             imgui.Dummy(imgui.ImVec2(1,0))
             imgui.Separator()
             
             imgui.Dummy(imgui.ImVec2(1,0))
-            imgui.Text(u8'пїЅпїЅпїЅпїЅ пїЅпїЅ BlastHack: ') imgui.SameLine()
+            imgui.Text(u8'Тема на BlastHack: ') imgui.SameLine()
             imgui.Link('https://www.blast.hk/threads/216930/', u8'https://www.blast.hk/threads/216930/')
             imgui.Dummy(imgui.ImVec2(1,0))
             
-            imgui.Text(u8'пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: ') imgui.SameLine()
+            imgui.Text(u8'По всем вопросам сюда: ') imgui.SameLine()
             imgui.Link('https://t.me/criceta0', u8'@criceta0')
             imgui.Dummy(imgui.ImVec2(1,0))
             imgui.Separator()
             
             
             imgui.Dummy(imgui.ImVec2(1,0))
-            imgui.Text(u8'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ') imgui.SameLine()
+            imgui.Text(u8'Для средних цен установите: ') imgui.SameLine()
             imgui.Link('https://www.blast.hk/threads/88005/', u8'https://www.blast.hk/threads/88005/')
             imgui.Dummy(imgui.ImVec2(1,0))
             
@@ -3039,7 +3039,7 @@ elseif settings.main.stylemode == 8 then
 end 
 
 local russian_characters = {
-    [168] = 'пїЅ', [184] = 'пїЅ', [192] = 'пїЅ', [193] = 'пїЅ', [194] = 'пїЅ', [195] = 'пїЅ', [196] = 'пїЅ', [197] = 'пїЅ', [198] = 'пїЅ', [199] = 'пїЅ', [200] = 'пїЅ', [201] = 'пїЅ', [202] = 'пїЅ', [203] = 'пїЅ', [204] = 'пїЅ', [205] = 'пїЅ', [206] = 'пїЅ', [207] = 'пїЅ', [208] = 'пїЅ', [209] = 'пїЅ', [210] = 'пїЅ', [211] = 'пїЅ', [212] = 'пїЅ', [213] = 'пїЅ', [214] = 'пїЅ', [215] = 'пїЅ', [216] = 'пїЅ', [217] = 'пїЅ', [218] = 'пїЅ', [219] = 'пїЅ', [220] = 'пїЅ', [221] = 'пїЅ', [222] = 'пїЅ', [223] = 'пїЅ', [224] = 'пїЅ', [225] = 'пїЅ', [226] = 'пїЅ', [227] = 'пїЅ', [228] = 'пїЅ', [229] = 'пїЅ', [230] = 'пїЅ', [231] = 'пїЅ', [232] = 'пїЅ', [233] = 'пїЅ', [234] = 'пїЅ', [235] = 'пїЅ', [236] = 'пїЅ', [237] = 'пїЅ', [238] = 'пїЅ', [239] = 'пїЅ', [240] = 'пїЅ', [241] = 'пїЅ', [242] = 'пїЅ', [243] = 'пїЅ', [244] = 'пїЅ', [245] = 'пїЅ', [246] = 'пїЅ', [247] = 'пїЅ', [248] = 'пїЅ', [249] = 'пїЅ', [250] = 'пїЅ', [251] = 'пїЅ', [252] = 'пїЅ', [253] = 'пїЅ', [254] = 'пїЅ', [255] = 'пїЅ',
+    [168] = 'Ё', [184] = 'ё', [192] = 'А', [193] = 'Б', [194] = 'В', [195] = 'Г', [196] = 'Д', [197] = 'Е', [198] = 'Ж', [199] = 'З', [200] = 'И', [201] = 'Й', [202] = 'К', [203] = 'Л', [204] = 'М', [205] = 'Н', [206] = 'О', [207] = 'П', [208] = 'Р', [209] = 'С', [210] = 'Т', [211] = 'У', [212] = 'Ф', [213] = 'Х', [214] = 'Ц', [215] = 'Ч', [216] = 'Ш', [217] = 'Щ', [218] = 'Ъ', [219] = 'Ы', [220] = 'Ь', [221] = 'Э', [222] = 'Ю', [223] = 'Я', [224] = 'а', [225] = 'б', [226] = 'в', [227] = 'г', [228] = 'д', [229] = 'е', [230] = 'ж', [231] = 'з', [232] = 'и', [233] = 'й', [234] = 'к', [235] = 'л', [236] = 'м', [237] = 'н', [238] = 'о', [239] = 'п', [240] = 'р', [241] = 'с', [242] = 'т', [243] = 'у', [244] = 'ф', [245] = 'х', [246] = 'ц', [247] = 'ч', [248] = 'ш', [249] = 'щ', [250] = 'ъ', [251] = 'ы', [252] = 'ь', [253] = 'э', [254] = 'ю', [255] = 'я',
 }
 function string.rlower(s)
     s = s:lower()
@@ -3051,7 +3051,7 @@ function string.rlower(s)
         local ch = s:byte(i)
         if ch >= 192 and ch <= 223 then -- upper russian characters
             output = output .. russian_characters[ch + 32]
-        elseif ch == 168 then -- пїЅ
+        elseif ch == 168 then -- Ё
             output = output .. russian_characters[184]
         else
             output = output .. string.char(ch)
@@ -3069,7 +3069,7 @@ function string.rupper(s)
         local ch = s:byte(i)
         if ch >= 224 and ch <= 255 then -- lower russian characters
             output = output .. russian_characters[ch - 32]
-        elseif ch == 184 then -- пїЅ
+        elseif ch == 184 then -- ё
             output = output .. russian_characters[168]
         else
             output = output .. string.char(ch)
