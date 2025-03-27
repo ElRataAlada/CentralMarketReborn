@@ -1,5 +1,5 @@
 script_name('Central Market Reborn')
-script_version('1.4.5')
+script_version('1.4.6')
 
 script_authors('Revinci')
 script_description('јвтоматическое ¬ыставление товаров на скупку и продажу')
@@ -45,6 +45,12 @@ local settings = inicfg.load({
         imgui = false
     }
 }, 'Central Market\\ARZCentral-settings')
+
+local parseListforsale = 25494 --scan items for SALE
+local parseItemsForBuy = 3050 -- scan items for BUY
+
+local sellDialog = 26543
+local removeItems = 26544
 
 local useAutoupdate = nil
 
@@ -525,7 +531,7 @@ function sellProcess()
                             sampSendClickTextdraw(textDrawsPositions[td_position][1])
                             wait(delayInt.v)
 
-                            if sampGetCurrentDialogId() ~= 26542 then
+                            if sampGetCurrentDialogId() ~= sellDialog then
                                 fixDialogBug()
                                 wait(delayInt.v * 2)
                                 sampSendClickTextdraw(textDrawsPositions[td_position][1])
@@ -534,28 +540,28 @@ function sellProcess()
 
                             td_position = td_position + 1
 
-                            if sampGetCurrentDialogId() == 26542 then
+                            if sampGetCurrentDialogId() == sellDialog then
                                 if total == 1 and toSell == 1 then
-                                    sampSendDialogResponse(26542, 1, nil, price)
+                                    sampSendDialogResponse(sellDialog, 1, nil, price)
                                     toSell = 0
                                     
                                 elseif amount >= toSell then
 
                                     if toSell == 1 then
-                                        sampSendDialogResponse(26542, 1, nil, price)
+                                        sampSendDialogResponse(sellDialog, 1, nil, price)
                                         toSell = 0
                                     else
-                                        sampSendDialogResponse(26542, 1, nil, toSell .. ", " .. price)
+                                        sampSendDialogResponse(sellDialog, 1, nil, toSell .. ", " .. price)
                                         toSell = toSell - amount
                                     end
 
                                 elseif amount < toSell then
 
                                     if amount == 1 then
-                                        sampSendDialogResponse(26542, 1, nil, price)
+                                        sampSendDialogResponse(sellDialog, 1, nil, price)
                                         toSell = toSell - amount
                                     else
-                                        sampSendDialogResponse(26542, 1, nil, amount .. ", " .. price)
+                                        sampSendDialogResponse(sellDialog, 1, nil, amount .. ", " .. price)
                                         toSell = toSell - amount
                                     end
                                 end
@@ -649,8 +655,8 @@ function removeSellProcess()
                         sampSendClickTextdraw(textdraws[t][1])
                         wait(delayInt.v)
                         
-                        if sampGetCurrentDialogId() == 26543 then
-                            sampSendDialogResponse(26543, 1)
+                        if sampGetCurrentDialogId() == removeItems then
+                            sampSendDialogResponse(removeItems, 1)
                             wait(delayInt.v)
                         end
                         
@@ -693,11 +699,11 @@ function sampev.onShowDialog(id, style, title, button1, button2, text) -- хук ди
         sampSendDialogResponse(id, 1, 0)
     end
 end)
-    if id == 3050 and check then -- тут мы парсим список товаров на скуп
+    if id == parseItemsForBuy and check then -- тут мы парсим список товаров на скуп
         lua_thread.create(parserPage, text, title)
     end
 
-    if id == 25493 and check then -- тут мы парсим список товаров на продажу
+    if id == parseListforsale and check then -- тут мы парсим список товаров на продажу
         lua_thread.create(parseInventoryItems, text, title)
     end
 
@@ -735,13 +741,13 @@ end)
         return {id, style, title, button1, button2, text}
     end
 
-    if id == 3050 and delprod then
+    if id == parseItemsForBuy and delprod then
         local i = 0
         for n in text:gmatch('[^\r\n]+') do
             if n:match('%{FFFFFF%}(.+)') then
                 lua_thread.create(function()
                     while pause do wait(0) end
-                    sampSendDialogResponse(3050, 1, i-1)
+                    sampSendDialogResponse(parseItemsForBuy, 1, i-1)
                 end)
                 break
             end
@@ -749,7 +755,7 @@ end)
                 lua_thread.create(function()
                     while pause do wait(0) end
                     wait(parserBuf.v) 
-                    sampSendDialogResponse(3050, 1, i-1) 
+                    sampSendDialogResponse(parseItemsForBuy, 1, i-1) 
                 end)
                 break
             end
@@ -777,14 +783,14 @@ end)
         end)
     end
 
-    if id == 3050 and buyProc then
+    if id == parseItemsForBuy and buyProc then
         lua_thread.create(function()
             local skip, isFound, i = true, false, 0
             for n in text:gmatch('[^\r\n]+') do
                 if shopMode == 2 then
                     for t, a in pairs(inputsSell) do if n:find('{777777}'..itemsBuy[inputsSell[t][3]][1], 0, true) and inputsSell[t][4] == false then wait(delayInt.v) bName = t sampSendDialogResponse(3050, 1, i - 1) isFound = true break end end
                 end
-                if n:find(">>>") then wait(parserBuf.v) sampSendDialogResponse(3050, 1, i - 1) end
+                if n:find(">>>") then wait(parserBuf.v) sampSendDialogResponse(parseItemsForBuy, 1, i - 1) end
                 if isFound then break end
                 i = i + 1
             end
@@ -964,7 +970,7 @@ function parseInventoryItems(text, title)
         end
 
         
-        if n:find(">>") then wait(parserBuf.v) sampSendDialogResponse(25493, 1, i-1) isNext = true end -- следующа€ страничка
+        if n:find(">>") then wait(parserBuf.v) sampSendDialogResponse(parseListforsale, 1, i-1) isNext = true end -- следующа€ страничка
         i = i + 1
     end
 
@@ -1011,11 +1017,11 @@ function parserPage(text, title) -- переделал функу Devilov'a
                 end
                 if not isFound then table.insert(itemsBuy, {item, settings.main.classiccount, settings.main.classicprice}) end
             end
-		if n:find(">>>") and (cur ~= max) then wait(parserBuf.v) sampSendDialogResponse(3050, 1, i-1) isNext = true end -- следующа€ страничка
+		if n:find(">>>") and (cur ~= max) then wait(parserBuf.v) sampSendDialogResponse(parseItemsForBuy, 1, i-1) isNext = true end -- следующа€ страничка
         i = i + 1
 	end
     
-    if not isNext then check = false sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}ѕроверка списков прошла успешно! ќткройте меню по команде: {'..settings.main.color..'}/cmr', settings.main.colormsg) jsonSave(json_file_BuyList, itemsBuy) sampSendDialogResponse(3050, 0) skip = false end
+    if not isNext then check = false sampAddChatMessage('[ Central Market Reborn ]: {FFFFFF}ѕроверка списков прошла успешно! ќткройте меню по команде: {'..settings.main.color..'}/cmr', settings.main.colormsg) jsonSave(json_file_BuyList, itemsBuy) sampSendDialogResponse(parseItemsForBuy, 0) skip = false end
 end
 imgui.Scroller = {
 	_ids = {},
